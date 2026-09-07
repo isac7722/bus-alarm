@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: buswidget
+      POSTGRES_USER: buswidget
+      POSTGRES_PASSWORD: buswidget
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buswidget -d buswidget"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: backend
+    env_file:
+      - path: backend/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://buswidget:buswidget@postgres:5432/buswidget
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+
+  import-stations:
+    build:
+      context: backend
+    env_file:
+      - path: backend/.env
+        required: false
+    volumes:
+      - ./seoul_bus_statiosn.xlsx:/data/seoul_bus_statiosn.xlsx:ro
+    environment:
+      DATABASE_URL: postgresql+asyncpg://buswidget:buswidget@postgres:5432/buswidget
+      STATION_CATALOG_PATH: /data/seoul_bus_statiosn.xlsx
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["python", "-m", "app.commands.import_stations"]
+
+  backend:
+    build:
+      context: backend
+    env_file:
+      - path: backend/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://buswidget:buswidget@postgres:5432/buswidget
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      import-stations:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:

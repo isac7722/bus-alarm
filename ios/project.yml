@@ -1,0 +1,112 @@
+name: BusWidget
+options:
+  bundleIdPrefix: com.pangjoong
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "26.0"
+  generateEmptyDirectories: true
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.0.0"
+    DEVELOPMENT_TEAM: "isac7722@gmail.com"
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  BusWidgetApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: BusWidgetApp
+      - path: Shared
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pangjoong.BusWidget
+        PRODUCT_NAME: BusWidget
+        PRODUCT_MODULE_NAME: BusWidgetApp
+        INFOPLIST_KEY_CFBundleDisplayName: 버스 위젯
+    info:
+      path: BusWidgetApp/Info.plist
+      properties:
+        CFBundleDisplayName: 버스 위젯
+        UILaunchScreen: {}
+        APIBaseURL: $(API_BASE_URL)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    entitlements:
+      path: BusWidgetApp/BusWidgetApp.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.pangjoong.buswidget
+    dependencies:
+      - target: BusWidgetExtension
+        embed: true
+
+  BusWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BusWidgetExtension
+      - path: Shared
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
+    settings:
+      base:
+        # Embedded extensions must use the containing app bundle ID as a prefix.
+        PRODUCT_BUNDLE_IDENTIFIER: com.pangjoong.BusWidget.BusWidgetExtension
+        PRODUCT_NAME: BusWidgetExtension
+        SKIP_INSTALL: true
+    info:
+      path: BusWidgetExtension/Info.plist
+      properties:
+        CFBundleDisplayName: 버스 도착
+        APIBaseURL: $(API_BASE_URL)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: BusWidgetExtension/BusWidgetExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.pangjoong.buswidget
+
+  BusWidgetTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: BusWidgetTests
+      - path: BusWidgetExtensionTests
+    dependencies:
+      - target: BusWidgetApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pangjoong.BusWidgetTests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/BusWidget.app/BusWidget
+        BUNDLE_LOADER: $(TEST_HOST)
+
+schemes:
+  BusWidget:
+    build:
+      targets:
+        BusWidgetApp: all
+        BusWidgetExtension: all
+        BusWidgetTests: [test]
+    test:
+      gatherCoverageData: true
+      targets:
+        - BusWidgetTests
