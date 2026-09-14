@@ -37,6 +37,11 @@ struct StationSearchView: View {
                 }
             }
             .navigationTitle("정류소 선택")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    PrivacyPolicyButton()
+                }
+            }
             .searchable(text: $viewModel.query, prompt: "예: 강남역")
             .onChange(of: viewModel.query) { _, _ in viewModel.queryDidChange() }
         }
@@ -61,4 +66,3 @@ struct StationSearchView: View {
         .listStyle(.insetGrouped)
     }
 }
-

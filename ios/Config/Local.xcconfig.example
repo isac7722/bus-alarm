@@ -1,3 +1,6 @@
-// Copy to Local.xcconfig and use your Mac LAN IP for a physical iPhone.
-// API_BASE_URL = http:/$()/192.168.0.10:8000
+// Copy to Local.xcconfig. Use the 10-character Team ID from Apple Developer,
+// not your Apple Account email. This applies to both app and widget targets.
+// DEVELOPMENT_TEAM = YOURTEAMID
 
+// Optional: connect to a local backend instead of https://bus.pangjoong.com.
+// API_BASE_URL = http:/$()/192.168.0.10:8000

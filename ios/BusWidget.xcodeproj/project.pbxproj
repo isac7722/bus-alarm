@@ -15,9 +15,12 @@
 		26371165E4D9448650D5D7B5 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600AA69C0FD569783A53DF73 /* AppGroupStore.swift */; };
 		29D5702D8FA3F3EC6692CA18 /* StationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555302F7156C337CA92933A1 /* StationModels.swift */; };
 		2FD7A32AA5C3A66173C0364B /* RouteSelectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 282685905BB588BE85FE6821 /* RouteSelectionViewModel.swift */; };
+		3241098139C71D27E45E993F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F17496460C5C3962538E977F /* Assets.xcassets */; };
 		37E9C5BDEC9E117335BF2C20 /* BusWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D17C097AEA35D691DA2BDBE /* BusWidgetApp.swift */; };
+		39ACC70EDE85FD4D9E785646 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */; };
 		3C9227FF3E4A6AFA3AA0D086 /* WidgetConfigurationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08C15F57B93B62B2A4BFD3A /* WidgetConfigurationData.swift */; };
 		3FD2B20D00F0686377D32C34 /* WidgetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */; };
+		403DD1857A10CD5B1F5B0CDD /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492632C9302F106AADACF091 /* PrivacyPolicyView.swift */; };
 		51C143E8FA71780346F31487 /* WidgetTimelineBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1D223632FE63BE9BA231E8 /* WidgetTimelineBuilder.swift */; };
 		5419420C78F54B07407DEA07 /* SavedConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDD70B3AE473450097862775 /* SavedConfigurationView.swift */; };
 		5E67D74B73DB6BCB3CEDDB14 /* WidgetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */; };
@@ -26,6 +29,7 @@
 		736094BD015288BBD50966EB /* AppGroupStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E514757809D77C8206C450C /* AppGroupStoreTests.swift */; };
 		7D99E7DB964A98D58FE6BE38 /* ArrivalCountdownFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */; };
 		844D675388CF1A22A4127257 /* BusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372A6A6921FFC12FAFCD1090 /* BusWidget.swift */; };
+		86248A27162CDF1E26E47353 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */; };
 		89D4BDE659A9359201DAF47C /* BusWidgetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C67ABF1468D008D0ADF4AE /* BusWidgetProvider.swift */; };
 		9D80176E9F1BBC3384DAE1F3 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600AA69C0FD569783A53DF73 /* AppGroupStore.swift */; };
 		A08E6705CEBD255AF8D57044 /* BusWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C476DA9355DA242982C86F9 /* BusWidgetView.swift */; };
@@ -36,6 +40,7 @@
 		B22C7E38BC4A7674439D4B8F /* ArrivalCountdownFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */; };
 		B7BCBB142A72B3C04B60E293 /* BusWidgetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993A71734D4D9700020F85DB /* BusWidgetEntry.swift */; };
 		BFFD3FF70CF6F21122BC8BDF /* RouteArrivalRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288E002DE122F8B02D041256 /* RouteArrivalRow.swift */; };
+		C8509F24DB0241F1D8DE81EF /* privacy.json in Resources */ = {isa = PBXBuildFile; fileRef = 6F4E55AAB28C80DE01F0D837 /* privacy.json */; };
 		C98E5EFC5ECD5D6878F2300A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AF80DA32639A2AC5438D91 /* APIClient.swift */; };
 		CBF7D92BA4A1001D041AF5B9 /* LockScreenBusWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E3C4CBB49F796E673260ED4 /* LockScreenBusWidgetView.swift */; };
 		D16CDE90F36C75EF12B350ED /* StationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555302F7156C337CA92933A1 /* StationModels.swift */; };
@@ -89,7 +94,9 @@
 		30170C678794366A4BB8C097 /* BusWidgetApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BusWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		319D54A4D33FC139248076E2 /* TimelineBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineBuilderTests.swift; sourceTree = "<group>"; };
 		372A6A6921FFC12FAFCD1090 /* BusWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidget.swift; sourceTree = "<group>"; };
+		3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		42BEFEC0E63528422D495EA6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		492632C9302F106AADACF091 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		4C476DA9355DA242982C86F9 /* BusWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetView.swift; sourceTree = "<group>"; };
 		4E514757809D77C8206C450C /* AppGroupStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStoreTests.swift; sourceTree = "<group>"; };
 		555302F7156C337CA92933A1 /* StationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationModels.swift; sourceTree = "<group>"; };
@@ -99,6 +106,7 @@
 		600AA69C0FD569783A53DF73 /* AppGroupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStore.swift; sourceTree = "<group>"; };
 		6125171464CDD53D870E85F4 /* StationSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationSearchViewModel.swift; sourceTree = "<group>"; };
 		637517B559CB76413FEF32E1 /* ArrivalPredictionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalPredictionView.swift; sourceTree = "<group>"; };
+		6F4E55AAB28C80DE01F0D837 /* privacy.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = privacy.json; sourceTree = "<group>"; };
 		71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalCountdownFormatter.swift; sourceTree = "<group>"; };
 		7BE713BF2BBFC5A056AEB044 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		7D17C097AEA35D691DA2BDBE /* BusWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetApp.swift; sourceTree = "<group>"; };
@@ -115,6 +123,7 @@
 		D08B7542DA02EB19C50C5489 /* BusWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = BusWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4C67ABF1468D008D0ADF4AE /* BusWidgetProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetProvider.swift; sourceTree = "<group>"; };
 		E97445AFE2C15E5823EC22DF /* BusWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BusWidgetExtension.entitlements; sourceTree = "<group>"; };
+		F17496460C5C3962538E977F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FDD70B3AE473450097862775 /* SavedConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedConfigurationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -151,6 +160,7 @@
 		3385DA9AC34E8EBB6A9FBD93 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */,
 				A4652424D346528BE26C303E /* Models */,
 				35C1055EB05A03A644E884D6 /* Services */,
 				494C4CA4683E4B6A84B08BD8 /* Storage */,
@@ -178,6 +188,7 @@
 			isa = PBXGroup;
 			children = (
 				9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */,
+				492632C9302F106AADACF091 /* PrivacyPolicyView.swift */,
 				7BE713BF2BBFC5A056AEB044 /* RootView.swift */,
 				9C63CC0ABD61D347757B8121 /* RouteSelectionView.swift */,
 				FDD70B3AE473450097862775 /* SavedConfigurationView.swift */,
@@ -202,6 +213,7 @@
 				4F3B9F53D5314F7761DACF94 /* BusWidgetExtensionTests */,
 				71D8F6C4550ABF910C97E540 /* BusWidgetTests */,
 				83C96D664AA946A589ADEB88 /* Config */,
+				C6BD837A54EC35FF6BBDEF5C /* content */,
 				3385DA9AC34E8EBB6A9FBD93 /* Shared */,
 				1B6EAEBD4267CC84527F9970 /* Products */,
 			);
@@ -254,6 +266,15 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		C6BD837A54EC35FF6BBDEF5C /* content */ = {
+			isa = PBXGroup;
+			children = (
+				6F4E55AAB28C80DE01F0D837 /* privacy.json */,
+			);
+			name = content;
+			path = ../backend/app/content;
+			sourceTree = "<group>";
+		};
 		CB4EE63DDA6AC4793E16D06A /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
@@ -273,6 +294,7 @@
 		CEBF9A191A5315A5728B67EC /* BusWidgetApp */ = {
 			isa = PBXGroup;
 			children = (
+				F17496460C5C3962538E977F /* Assets.xcassets */,
 				0A179BE2D5C3FF0C5A8DF99E /* BusWidgetApp.entitlements */,
 				42BEFEC0E63528422D495EA6 /* Info.plist */,
 				2C705A37BC3A163562974998 /* App */,
@@ -306,6 +328,7 @@
 			buildConfigurationList = 8D2E50C3DDAD3140A326FCC1 /* Build configuration list for PBXNativeTarget "BusWidgetApp" */;
 			buildPhases = (
 				A259CE3D611BD3BCF0F744A1 /* Sources */,
+				3C619799EFE8A8B3D59788E8 /* Resources */,
 				4282895D36F2A00827C39FF3 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -343,6 +366,7 @@
 			buildConfigurationList = 4C3CD2BB73B1DAAA4C2ABCEE /* Build configuration list for PBXNativeTarget "BusWidgetExtension" */;
 			buildPhases = (
 				3AFCB667B18B53D4C3E98B6D /* Sources */,
+				AA5393EFD642844DA325D072 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -365,15 +389,15 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					56F9626119CF2869596D067D = {
-						DevelopmentTeam = "isac7722@gmail.com";
+						DevelopmentTeam = K5M43RRH97;
 						ProvisioningStyle = Automatic;
 					};
 					A15E627AF77FEF52007DB385 = {
-						DevelopmentTeam = "isac7722@gmail.com";
+						DevelopmentTeam = K5M43RRH97;
 						ProvisioningStyle = Automatic;
 					};
 					BA543C2BAEFD72A5BF7CE527 = {
-						DevelopmentTeam = "isac7722@gmail.com";
+						DevelopmentTeam = K5M43RRH97;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -398,6 +422,27 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3C619799EFE8A8B3D59788E8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3241098139C71D27E45E993F /* Assets.xcassets in Resources */,
+				86248A27162CDF1E26E47353 /* PrivacyInfo.xcprivacy in Resources */,
+				C8509F24DB0241F1D8DE81EF /* privacy.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA5393EFD642844DA325D072 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				39ACC70EDE85FD4D9E785646 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		3AFCB667B18B53D4C3E98B6D /* Sources */ = {
@@ -434,6 +479,7 @@
 				7D99E7DB964A98D58FE6BE38 /* ArrivalCountdownFormatter.swift in Sources */,
 				E3AFB62AAE7C2D295BE473AB /* ArrivalModels.swift in Sources */,
 				37E9C5BDEC9E117335BF2C20 /* BusWidgetApp.swift in Sources */,
+				403DD1857A10CD5B1F5B0CDD /* PrivacyPolicyView.swift in Sources */,
 				180C6332D14134639057C532 /* RootView.swift in Sources */,
 				E750FAE0E20FDCEF2074E8B2 /* RouteSelectionView.swift in Sources */,
 				2FD7A32AA5C3A66173C0364B /* RouteSelectionViewModel.swift in Sources */,
@@ -511,7 +557,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "isac7722@gmail.com";
+				DEVELOPMENT_TEAM = K5M43RRH97;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -528,10 +574,13 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -552,7 +601,7 @@
 				PRODUCT_MODULE_NAME = BusWidgetApp;
 				PRODUCT_NAME = BusWidget;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -571,7 +620,7 @@
 				PRODUCT_NAME = BusWidgetExtension;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -590,7 +639,7 @@
 				PRODUCT_NAME = BusWidgetExtension;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -611,7 +660,7 @@
 				PRODUCT_MODULE_NAME = BusWidgetApp;
 				PRODUCT_NAME = BusWidget;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -652,7 +701,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "isac7722@gmail.com";
+				DEVELOPMENT_TEAM = K5M43RRH97;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -676,10 +725,13 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -695,7 +747,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.pangjoong.BusWidgetTests;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BusWidget.app/BusWidget";
 			};
 			name = Debug;
@@ -712,7 +764,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.pangjoong.BusWidgetTests;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BusWidget.app/BusWidget";
 			};
 			name = Release;

@@ -48,6 +48,11 @@ struct SavedConfigurationView: View {
                 .frame(maxWidth: .infinity)
             }
             .navigationTitle("버스 위젯")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    PrivacyPolicyButton()
+                }
+            }
         }
     }
 
@@ -56,4 +61,3 @@ struct SavedConfigurationView: View {
         return "\(value.prefix(2))-\(value.suffix(3))"
     }
 }
-

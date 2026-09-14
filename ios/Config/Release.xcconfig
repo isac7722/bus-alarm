@@ -1,3 +1,2 @@
-API_BASE_URL = https:/$()/example.invalid
+API_BASE_URL = https:/$()/bus.pangjoong.com
 #include? "Local.xcconfig"
-
