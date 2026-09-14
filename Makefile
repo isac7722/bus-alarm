@@ -9,7 +9,7 @@ IOS_DIR := ios
 XCODE_PROJECT := $(IOS_DIR)/BusWidget.xcodeproj
 SIMULATOR ?= iPhone 17 Pro
 
-.PHONY: help dev server xcode stop restart logs status test test-backend test-backend-unit test-backend-integration test-ios wait-server check-docker check-xcode
+.PHONY: help dev server xcode stop restart logs status test test-backend test-backend-unit test-backend-integration test-ios wait-server check-docker check-xcode testflight testflight-check testflight-status testflight-script-test
 
 help: ## 사용 가능한 Make 명령을 표시합니다.
 	@echo "BusWidget 개발 명령"
@@ -89,3 +89,16 @@ check-docker:
 check-xcode:
 	@command -v xcodegen >/dev/null 2>&1 || { echo "오류: 'brew install xcodegen'으로 XcodeGen을 설치해 주세요."; exit 1; }
 	@command -v xcodebuild >/dev/null 2>&1 || { echo "오류: Xcode Command Line Tools를 설정해 주세요."; exit 1; }
+
+
+testflight: ## iOS 테스트 후 버전을 증가시켜 TestFlight에 업로드하고 처리 완료를 확인합니다.
+	@python3 ios/scripts/testflight.py release --simulator "$(SIMULATOR)"
+
+testflight-check: ## API 키 설정과 App Store Connect 앱 접근을 확인합니다. 업로드하지 않습니다.
+	@python3 ios/scripts/testflight.py check
+
+testflight-status: ## 마지막 업로드의 Apple 처리 상태를 확인합니다. 재업로드하지 않습니다.
+	@python3 ios/scripts/testflight.py status
+
+testflight-script-test: ## TestFlight 자동화의 오프라인 테스트를 실행합니다.
+	@python3 -m unittest discover -s ios/scripts/tests -v

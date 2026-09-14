@@ -45,6 +45,8 @@ targets:
     info:
       path: BusWidgetApp/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: 버스 위젯
         UILaunchScreen: {}
         APIBaseURL: $(API_BASE_URL)
@@ -80,6 +82,8 @@ targets:
     info:
       path: BusWidgetExtension/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: 버스 도착
         APIBaseURL: $(API_BASE_URL)
         NSAppTransportSecurity:

@@ -105,6 +105,35 @@ GET /api/v1/stations/{station_id}/arrivals?route_ids=100100341,100100360
 
 `/docs`, `/redoc`, `/openapi.json`은 제공하지 않습니다.
 
+## TestFlight 배포
+
+최초 API 키·서명 설정 후 한 명령으로 iOS 테스트, 버전 증가, Release 빌드, 업로드와 Apple 처리 완료 확인을 실행합니다.
+
+```bash
+make testflight
+```
+
+App Store Connect의 **사용자 및 액세스 → 통합 → App Store Connect API → 팀 키**에서 발급한 Key ID, Issuer ID와 `.p8` 파일을 사용합니다. 개인 키는 저장소 밖에 보관하고 아래 예시를 복사한 뒤 실제 값을 입력합니다.
+
+```bash
+cp ios/Config/TestFlight.example.json ios/Config/TestFlight.local.json
+```
+
+설정 항목은 `key_id`, `issuer_id`, `key_path`이며, 같은 의미의 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_PATH` 환경변수가 있으면 우선 적용합니다. 로컬 설정과 개인 키는 Git에서 제외됩니다.
+
+```bash
+make testflight-check        # 인증과 앱 접근 확인
+make testflight              # iOS 테스트 → 빌드·업로드 → Apple 처리 확인
+make testflight-status       # 마지막 업로드 상태 재확인, 재업로드하지 않음
+make testflight-script-test  # 자동화 로직의 오프라인 테스트
+```
+
+앱과 위젯은 동일 버전과 운영 API 주소로 빌드됩니다. 프로젝트·원격·로컬 업로드 이력 중 가장 높은 앱 버전의 패치를 증가시키고 빌드 번호도 증가시킵니다. 업로드를 시도한 번호는 재사용하지 않습니다. Apple 처리 완료 후 프로젝트 버전을 반영하며 커밋·푸시는 자동 수행하지 않습니다.
+
+결과와 단계별 로그는 `ios/build/testflight/<실행 시각>/`에 저장됩니다. 기본 30분 대기 후에도 처리가 끝나지 않으면 `make testflight-status`로 다시 확인하세요. 특정 기록은 `python3 ios/scripts/testflight.py status --run ios/build/testflight/실행폴더 --timeout 3600`으로 확인할 수 있습니다. 인증 정보 없이 실행 흐름만 확인하려면 `python3 ios/scripts/testflight.py --dry-run`을 사용합니다.
+
+서명 인증서·프로파일은 Xcode 자동 서명을 사용합니다. 서명 실패 시 `archive.log`·`export.log`에서 권한과 App Group 설정을 확인하세요. 처리 완료는 Apple의 `VALID` 상태를 의미하며, 테스터 그룹 지정·외부 테스트 심사·App Store 출시 제출은 수행하지 않습니다. 수출 규정 준수 정보는 App Store Connect에서 별도로 확인합니다.
+
 ## 검증
 
 백엔드:

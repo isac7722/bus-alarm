@@ -21,3 +21,7 @@ check_seoul_bus_key.py
 
 backend/bin/
 backend/coverage.out
+
+ios/Config/TestFlight.local.json
+ios/build/
+*.p8
