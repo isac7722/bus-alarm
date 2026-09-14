@@ -1,1 +1,0 @@
-"""BusWidget backend application."""

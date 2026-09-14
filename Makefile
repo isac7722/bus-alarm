@@ -9,7 +9,7 @@ IOS_DIR := ios
 XCODE_PROJECT := $(IOS_DIR)/BusWidget.xcodeproj
 SIMULATOR ?= iPhone 17 Pro
 
-.PHONY: help dev server xcode stop restart logs status test test-backend test-ios wait-server check-docker check-xcode
+.PHONY: help dev server xcode stop restart logs status test test-backend test-backend-unit test-backend-integration test-ios wait-server check-docker check-xcode
 
 help: ## 사용 가능한 Make 명령을 표시합니다.
 	@echo "BusWidget 개발 명령"
@@ -48,12 +48,16 @@ test: ## 백엔드 검사와 iOS 테스트를 모두 실행합니다.
 	@$(MAKE) --no-print-directory test-backend
 	@$(MAKE) --no-print-directory test-ios
 
-test-backend:
-	@echo "백엔드 환경 동기화 및 테스트"
-	@cd backend && uv sync
-	@cd backend && uv run ruff check app tests
-	@cd backend && uv run mypy app
-	@cd backend && uv run pytest --cov=app
+test-backend: check-docker ## Go 검사와 격리된 PostgreSQL·Redis 통합 테스트를 실행합니다.
+	@cd backend && test -z "$$(gofmt -l cmd internal app/content/content.go)" || { echo "gofmt 검사가 실패했습니다."; exit 1; }
+	@cd backend && go vet ./...
+	@bash backend/scripts/test-integration.sh
+
+test-backend-unit: ## Docker 없이 Go 단위·호환성 테스트를 실행합니다.
+	@cd backend && go test -race ./...
+
+test-backend-integration: check-docker ## 임시 DB·Redis에서 Go 전체 테스트를 실행합니다.
+	@bash backend/scripts/test-integration.sh
 
 test-ios: check-xcode
 	@echo "iOS 프로젝트 생성 및 테스트: $(SIMULATOR)"

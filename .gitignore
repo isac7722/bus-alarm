@@ -18,3 +18,6 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 check_seoul_bus_key.py
+
+backend/bin/
+backend/coverage.out

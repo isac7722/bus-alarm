@@ -1,10 +1,12 @@
+.env
 .venv
+__pycache__
 .pytest_cache
 .mypy_cache
 .ruff_cache
 .coverage
 htmlcov
-tests
-__pycache__
-*.pyc
-.env
+bin
+coverage.out
+internal/server/testdata
+**/*_test.go

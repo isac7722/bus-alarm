@@ -1,0 +1,347 @@
+[
+  {
+    "name": "",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": []
+    }
+  },
+  {
+    "name": "base",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>100100341</busRouteId><rtNm>341</rtNm><mkTm>2026-08-12 09:27:00.0</mkTm><staOrd>10</staOrd><traTime1>180</traTime1><sectOrd1>8</sectOrd1><vehId1>1234</vehId1><traTime2>600</traTime2><sectOrd2>4</sectOrd2></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T09:27:00+09:00",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "100100341",
+          "route_name": "341",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": "2026-08-12T09:30:00+09:00",
+              "remaining_seconds": 180,
+              "remaining_stops": 2,
+              "vehicle_status": "RUNNING"
+            },
+            {
+              "order": 2,
+              "arrival_at": "2026-08-12T09:37:00+09:00",
+              "remaining_seconds": 600,
+              "remaining_stops": 6,
+              "vehicle_status": "RUNNING"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "waiting",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>1</busRouteId><arrmsg1>출발대기</arrmsg1><traTime1>90</traTime1></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "1",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": null,
+              "remaining_seconds": null,
+              "remaining_stops": null,
+              "vehicle_status": "WAITING"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "ended",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>1</busRouteId><arrmsg1>운행종료</arrmsg1><traTime1>90</traTime1></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "1",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": "2026-08-12T00:28:30.123400Z",
+              "remaining_seconds": 90,
+              "remaining_stops": null,
+              "vehicle_status": "NOT_AVAILABLE"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "unknown",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>1</busRouteId><arrmsg1>곧도착</arrmsg1><traTime1>0</traTime1></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "1",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": "2026-08-12T00:27:00.123400Z",
+              "remaining_seconds": 0,
+              "remaining_stops": null,
+              "vehicle_status": "UNKNOWN"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "zero",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>1</busRouteId><traTime1>0</traTime1><vehId1>123</vehId1></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "1",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": "2026-08-12T00:27:00.123400Z",
+              "remaining_seconds": 0,
+              "remaining_stops": null,
+              "vehicle_status": "RUNNING"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "negative_fraction",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>1</busRouteId><traTime1>-0.5</traTime1><traTime2>-2</traTime2></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "1",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": "2026-08-12T00:27:00.123400Z",
+              "remaining_seconds": 0,
+              "remaining_stops": null,
+              "vehicle_status": "NOT_AVAILABLE"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "text_stops_bug",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>1</busRouteId><arrmsg1>3분후[2번째 전]</arrmsg1><traTime1>180</traTime1></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "1",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": "2026-08-12T00:30:00.123400Z",
+              "remaining_seconds": 180,
+              "remaining_stops": null,
+              "vehicle_status": "RUNNING"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing_id",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><rtNm>341</rtNm></itemList></msgBody></ServiceResult>",
+    "status": 502,
+    "body": {
+      "error": {
+        "code": "SEOUL_BUS_API_ERROR",
+        "message": "버스 정보 응답에 필수 값이 없습니다."
+      }
+    }
+  },
+  {
+    "name": "compact_time",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>1</busRouteId><mkTm>20260812092700</mkTm><traTime1>1.9</traTime1></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T09:27:00+09:00",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "1",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": "2026-08-12T09:27:01+09:00",
+              "remaining_seconds": 1,
+              "remaining_stops": null,
+              "vehicle_status": "RUNNING"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_time",
+    "xml": "<ServiceResult><msgHeader><headerCd>0</headerCd></msgHeader><msgBody><itemList><busRouteId>1</busRouteId><mkTm>garbage</mkTm><traTime1>abc</traTime1></itemList></msgBody></ServiceResult>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "1",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": null,
+              "remaining_seconds": null,
+              "remaining_stops": null,
+              "vehicle_status": "NOT_AVAILABLE"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_xml",
+    "xml": "not xml",
+    "status": 502,
+    "body": {
+      "error": {
+        "code": "SEOUL_BUS_API_ERROR",
+        "message": "버스 정보 응답을 처리할 수 없습니다."
+      }
+    }
+  },
+  {
+    "name": "api_error",
+    "xml": "<ServiceResult><msgHeader><headerCd>5</headerCd></msgHeader></ServiceResult>",
+    "status": 502,
+    "body": {
+      "error": {
+        "code": "SEOUL_BUS_API_ERROR",
+        "message": "버스 정보를 일시적으로 조회할 수 없습니다."
+      }
+    }
+  },
+  {
+    "name": "fallback",
+    "xml": "<root><headerCd>0</headerCd><itemList><busRouteId>1</busRouteId><busRouteAbrv>A</busRouteAbrv></itemList></root>",
+    "status": 200,
+    "body": {
+      "station": {
+        "station_id": "22001",
+        "name": "강남역"
+      },
+      "updated_at": "2026-08-12T00:27:00.123400Z",
+      "fetched_at": "2026-08-12T00:27:00.123400Z",
+      "arrivals": [
+        {
+          "route_id": "1",
+          "route_name": "A",
+          "predictions": [
+            {
+              "order": 1,
+              "arrival_at": null,
+              "remaining_seconds": null,
+              "remaining_stops": null,
+              "vehicle_status": "NOT_AVAILABLE"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "multi_root",
+    "xml": "<root/><root/>",
+    "status": 502,
+    "body": {
+      "error": {
+        "code": "SEOUL_BUS_API_ERROR",
+        "message": "버스 정보 응답을 처리할 수 없습니다."
+      }
+    }
+  }
+]

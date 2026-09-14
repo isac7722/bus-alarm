@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{title}} · 버스 위젯</title>
+  <style>
+    :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { margin: 0; background: #f5f7fb; color: #17233a; line-height: 1.8; word-break: keep-all; overflow-wrap: anywhere; }
+    main { max-width: 720px; margin: 0 auto; padding: 48px 24px 64px; }
+    header { border-bottom: 2px solid #1765ec; padding-bottom: 24px; margin-bottom: 32px; }
+    .brand { color: #1765ec; font-weight: 700; }
+    h1 { font-size: clamp(1.8rem, 6vw, 2.4rem); line-height: 1.3; margin: 8px 0 16px; }
+    h2 { font-size: 1.15rem; margin: 0 0 12px; }
+    p { margin: 0 0 12px; }
+    section { margin-bottom: 32px; }
+    .date { color: #56647a; }
+    a { color: #145acb; text-underline-offset: 4px; }
+    footer { border-top: 1px solid #cbd4e3; padding-top: 24px; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #101724; color: #e4eaf5; }
+      .brand, a { color: #7ab6ff; }
+      .date { color: #acb9ce; }
+      footer { border-color: #354158; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header><div class="brand">버스 위젯</div>
+      <h1>{{title}}</h1>
+      <p class="date">시행일: {{date}}</p>
+    </header>
+    {{sections}}
+    <footer>운영자 · 버스 위젯 개인 개발자<br>
+      <a href="mailto:{{email}}">{{email}}</a>
+    </footer>
+  </main>
+</body>
+</html>

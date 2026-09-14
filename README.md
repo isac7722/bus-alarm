@@ -1,10 +1,10 @@
 # BusWidget
 
-서울 버스 정류소를 검색하고 선택한 노선의 최대 2대 도착 정보를 iOS 홈 화면 위젯에 표시하는 MVP입니다. 서울시 버스 API 키는 백엔드에만 저장하며, iOS 앱과 위젯은 정규화된 FastAPI API만 호출합니다.
+서울 버스 정류소를 검색하고 선택한 노선의 최대 2대 도착 정보를 iPhone 홈 화면 위젯에 표시하는 MVP입니다. 서울시 버스 API 키는 백엔드에만 저장하며, iPhone 앱과 위젯은 정규화된 Go API만 호출합니다. 현재 배포 대상은 iPhone이며 iPad, Mac Catalyst, Mac·Apple Vision에서의 네이티브 호환 배포는 지원 대상으로 설정하지 않습니다.
 
 ## 구성
 
-- `backend/`: FastAPI, PostgreSQL, Redis, Alembic, 서울시 XML API 어댑터
+- `backend/`: Go, PostgreSQL, Redis, SQL 마이그레이션, 서울시 XML API 어댑터
 - `ios/`: SwiftUI 앱, WidgetKit extension, 공유 App Group 저장소
 - `seoul_bus_statiosn.xlsx`: 정류소/노선 카탈로그 원본
 - `docker-compose.yml`: PostgreSQL 17, Redis 7.4, migration, catalog import, API
@@ -43,7 +43,7 @@ make test      백엔드 및 iOS 테스트
 make help      전체 명령 도움말
 ```
 
-첫 실행에서 Alembic migration과 전체 엑셀 import가 자동으로 완료된 뒤 API가 시작됩니다. 호스트 포트는 API 8000, PostgreSQL 5433, Redis 6379입니다.
+첫 실행에서 Go 마이그레이션과 전체 엑셀 import가 자동으로 완료된 뒤 API가 시작됩니다. 호스트 포트는 API 8000, PostgreSQL 5433, Redis 6379입니다.
 
 ## iOS 실행
 
@@ -51,12 +51,26 @@ make help      전체 명령 도움말
 
 Xcode에서 다음을 설정합니다.
 
-1. 앱과 위젯 target의 Signing Team을 선택합니다.
+1. Xcode에 개발자 계정을 연결합니다. 앱과 위젯의 기본 Signing Team은 `ios/project.yml`에 `K5M43RRH97`로 설정되어 프로젝트를 재생성해도 유지됩니다. 다른 Team을 사용하려면 `ios/Config/Local.xcconfig`에 `DEVELOPMENT_TEAM = 실제_TEAM_ID`를 설정합니다. Team ID는 Apple Developer에서 확인하는 10자리 식별자이며 이메일 주소가 아닙니다.
 2. 두 target에 App Groups capability를 추가하고 `group.com.pangjoong.buswidget`을 활성화합니다.
-3. Debug 시뮬레이터는 기본 `http://127.0.0.1:8000`을 사용합니다.
-4. 실기기는 `Config/Local.xcconfig.example`을 `Config/Local.xcconfig`로 복사하고 API URL을 Mac의 LAN 주소(예: `http://192.168.0.10:8000`)로 바꿉니다. iPhone과 Mac은 같은 네트워크에 있어야 합니다.
+3. 앱과 위젯은 Debug와 Release 모두 기본 `https://bus.pangjoong.com`을 사용합니다.
+4. 로컬 서버에 연결하려면 `Config/Local.xcconfig.example`을 `Config/Local.xcconfig`로 복사하고 `API_BASE_URL` 설정의 주석을 해제합니다. 시뮬레이터는 `http://127.0.0.1:8000`, 실기기는 Mac의 LAN 주소(예: `http://192.168.0.10:8000`)를 사용합니다. 실기기와 Mac은 같은 네트워크에 있어야 하며, 이 설정은 Debug와 Release 모두에 적용됩니다.
 
-앱 번들 ID는 `com.pangjoong.BusWidget`, 위젯은 `com.pangjoong.BusWidget.BusWidgetExtension`입니다. iOS는 임베드된 extension ID가 부모 앱 ID로 시작하도록 강제하므로 이 접두어 관계를 유지해야 합니다. 실제 배포 전에는 `Config/Release.xcconfig`의 placeholder를 HTTPS 백엔드 URL로 교체합니다.
+앱 번들 ID는 `com.pangjoong.BusWidget`, 위젯은 `com.pangjoong.BusWidget.BusWidgetExtension`입니다. iOS는 임베드된 extension ID가 부모 앱 ID로 시작하도록 강제하므로 이 접두어 관계를 유지해야 합니다.
+
+앱 아이콘은 `ios/BusWidgetApp/Assets.xcassets/AppIcon.appiconset`에 있습니다. 개인정보처리방침은 정류소 검색 화면과 저장된 정류소 화면의 손 모양 버튼에서 열 수 있으며, 앱에 번들로 포함되어 오프라인에서도 읽을 수 있습니다.
+
+## 개인정보 및 배포 준비
+
+개인정보처리방침 원본은 `backend/app/content/privacy.json`입니다. 백엔드의 `GET /privacy`와 앱의 방침 화면은 이 파일을 함께 사용합니다. 내용을 수정하면 서버 재배포와 앱 재빌드가 필요합니다. 운영 서버에 반영한 뒤 App Store Connect의 개인정보처리방침 URL에 `https://bus.pangjoong.com/privacy`를 입력합니다. 문의 주소는 `isac7722@gmail.com`입니다.
+
+`ios/Shared/PrivacyInfo.xcprivacy`는 앱과 위젯 번들에 각각 포함됩니다. App Group의 설정·도착 정보 공유를 위해 `UserDefaults` 사용 사유 `1C8F.1`을 선언합니다. 광고 추적은 하지 않지만, 서버의 IP 포함 접속 로그를 유지하므로 검색 기록, 제품 상호작용, 성능 및 기타 진단 데이터를 앱 기능 목적으로 선언했습니다. 원본 IP를 제거하지 않는 현재 동작을 기준으로 사용자와 연결된 데이터로 보수적으로 표시합니다. App Store Connect의 개인정보 응답은 매니페스트와 별개이므로 운영 환경을 확인한 뒤 동일하게 작성해야 하며, 현재 상태에서 단순히 '데이터를 수집하지 않음'으로 제출하지 않습니다.
+
+현재 저장소에는 운영 프록시·호스팅 업체·로그 보관 기간 설정이 없습니다. 방침에 임의의 보관 일수를 적지 않았습니다. 정식 출시 전 실제 로그 보관·삭제 주기, 호스팅 및 이메일 처리에 따른 위탁·국외 처리 여부를 확인하고 방침을 구체화해야 합니다. `/privacy`는 데이터베이스와 Redis 조회 없이 응답하지만, 현재 서버 프로세스 시작에는 기존과 동일하게 두 서비스가 필요합니다.
+
+선언 기준: [Apple의 개인정보 수집·IP 주소 안내](https://developer.apple.com/app-store/app-privacy-details/)와 [App Group UserDefaults 사용 사유](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype).
+
+아이폰 전용 설정은 iPad 네이티브 지원을 제외합니다. App Store가 제공하는 iPhone 앱의 iPad 호환 실행까지 차단하는 설정은 아닙니다. App Store Connect의 Mac 및 Apple Vision 제공 여부도 출시 전에 확인합니다.
 
 앱에서 정류소를 검색하고 노선을 최대 4개 선택해 저장한 뒤 `버스 도착` 위젯을 추가합니다. 홈 화면 소형은 최대 2개, 중형은 최대 4개 노선을 표시합니다. 잠금 화면에서는 직사각형이 앞의 2개 노선을, 원형과 인라인이 첫 번째 노선을 표시하며 도착 시간은 `2분`, `곧`, `도착`처럼 간결하게 표시됩니다.
 
@@ -66,6 +80,7 @@ Xcode에서 다음을 설정합니다.
 
 ```text
 GET /health
+GET /privacy
 GET /api/v1/stations/search?q=강남
 GET /api/v1/stations/{station_id}
 GET /api/v1/stations/{station_id}/arrivals?route_ids=100100341,100100360
@@ -88,18 +103,15 @@ GET /api/v1/stations/{station_id}/arrivals?route_ids=100100341,100100360
 }
 ```
 
-Swagger UI는 로컬 실행 후 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)에서 확인할 수 있습니다.
+`/docs`, `/redoc`, `/openapi.json`은 제공하지 않습니다.
 
 ## 검증
 
 백엔드:
 
 ```bash
-cd backend
-uv sync
-uv run ruff check app tests
-uv run mypy app
-uv run pytest --cov=app
+make test-backend       # Go 1.26.1+ 및 Docker 필요, 임시 DB·Redis 자동 생성·정리
+make test-backend-unit  # Docker 없이 단위·Python 응답 호환성 검사
 ```
 
 iOS:
