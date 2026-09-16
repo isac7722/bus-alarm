@@ -68,6 +68,11 @@ func Run(args []string) error {
 	if err != nil {
 		return err
 	}
+	if command == "serve" {
+		if err := validateAPNsConfig(config); err != nil {
+			return err
+		}
+	}
 	log := NewLogger()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -119,7 +124,20 @@ func Run(args []string) error {
 		client = &MockClient{time.Now, log}
 	}
 	service := &Service{repository, store, client, log}
-	handler := &Handler{config, service, store, log}
+	handler := &Handler{Config: config, Service: service, Limiter: store, Log: log}
+	if config.APNsKeyPath != "" {
+		pusher, err := NewAPNsClient(config)
+		if err != nil {
+			return err
+		}
+		live := &LiveActivities{Redis: redisClient, Service: service, Source: client.(LiveArrivalClient), Pusher: pusher}
+		handler.Live = live
+		workerCtx, cancelWorker := context.WithCancel(ctx)
+		workerDone := make(chan struct{})
+		go func() { defer close(workerDone); live.Run(workerCtx) }()
+		defer func() { cancelWorker(); <-workerDone; pusher.http.CloseIdleConnections() }()
+		log.Info("live_activities_enabled")
+	}
 	httpServer := &http.Server{Addr: ":8000", Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 5 * time.Second}
 	log.Info("application_started", "app_env", config.AppEnv, "mock_arrivals", config.MockArrivals)
 	done := make(chan error, 1)

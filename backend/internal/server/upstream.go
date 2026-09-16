@@ -34,10 +34,18 @@ type SeoulClient struct {
 
 func (c *SeoulClient) Namespace() string { return "live" }
 func (c *SeoulClient) Fetch(ctx context.Context, id string, _ []Route) (ArrivalsResponse, error) {
+	body, err := c.fetchBody(ctx, id)
+	if err != nil {
+		return ArrivalsResponse{}, err
+	}
+	return ParseArrivals(body, c.Now().UTC())
+}
+
+func (c *SeoulClient) fetchBody(ctx context.Context, id string) ([]byte, error) {
 	started := c.Now()
 	u, err := url.Parse(c.Config.APIBaseURL + "/getStationByUid")
 	if err != nil {
-		return ArrivalsResponse{}, upstreamError("버스 정보를 일시적으로 조회할 수 없습니다.")
+		return nil, upstreamError("버스 정보를 일시적으로 조회할 수 없습니다.")
 	}
 	q := u.Query()
 	q.Set("serviceKey", c.Config.APIKey)
@@ -45,26 +53,22 @@ func (c *SeoulClient) Fetch(ctx context.Context, id string, _ []Route) (Arrivals
 	u.RawQuery = q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return ArrivalsResponse{}, upstreamError("버스 정보를 일시적으로 조회할 수 없습니다.")
+		return nil, upstreamError("버스 정보를 일시적으로 조회할 수 없습니다.")
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return ArrivalsResponse{}, c.httpError(id, err)
+		return nil, c.httpError(id, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return ArrivalsResponse{}, c.httpError(id, fmt.Errorf("HTTP status %d", resp.StatusCode))
+		return nil, c.httpError(id, fmt.Errorf("HTTP status %d", resp.StatusCode))
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return ArrivalsResponse{}, c.httpError(id, err)
+		return nil, c.httpError(id, err)
 	}
-	result, err := ParseArrivals(body, c.Now().UTC())
-	if err != nil {
-		return result, err
-	}
-	c.Log.Info("seoul_bus_success", "station_id", id, "route_count", len(result.Arrivals), "latency_ms", c.Now().Sub(started).Milliseconds())
-	return result, nil
+	c.Log.Info("seoul_bus_success", "station_id", id, "latency_ms", c.Now().Sub(started).Milliseconds())
+	return body, nil
 }
 func (c *SeoulClient) httpError(id string, err error) error {
 	var timeout net.Error

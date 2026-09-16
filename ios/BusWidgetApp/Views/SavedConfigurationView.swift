@@ -31,6 +31,8 @@ struct SavedConfigurationView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 16))
 
+                    BusWaitingView(configuration: configuration)
+
                     Button("설정 변경", action: onEdit)
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)

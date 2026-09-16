@@ -2,6 +2,8 @@
 
 Go 1.26.1 기반 BusWidget API입니다. 전체 앱 실행은 상위 [README](../README.md)를 참고하세요.
 
+실시간 현황의 등록·종료 API와 APNs 갱신 워커도 제공합니다. [APNs 키·Docker 설정과 API 계약](../docs/live-activities.md)을 참고하세요. APNs 설정이 없으면 기존 조회 API만 동작합니다.
+
 ## 실행
 
 기존 `make server`와 `docker compose up --build -d`는 PostgreSQL → 마이그레이션 → 정류소 import → API 순서로 실행합니다. API는 8000 포트를 사용합니다.

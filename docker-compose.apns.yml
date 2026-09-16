@@ -1,0 +1,12 @@
+# Optional overlay. Defaults to the server's APNs key; override with APNS_KEY_HOST_PATH.
+# docker compose -f docker-compose.yml -f docker-compose.apns.yml up --build -d
+services:
+  backend:
+    environment:
+      APNS_KEY_PATH: /run/secrets/apns_key
+    secrets:
+      - apns_key
+
+secrets:
+  apns_key:
+    file: ${APNS_KEY_HOST_PATH:-/home/pangjoong/dev/bus-alarm/.config/AuthKey_V2LRALC8PH.p8}

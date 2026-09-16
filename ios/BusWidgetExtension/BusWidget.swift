@@ -24,6 +24,7 @@ struct BusArrivalWidget: Widget {
 struct BusWidgetBundle: WidgetBundle {
     var body: some Widget {
         BusArrivalWidget()
+        BusWaitingLiveActivity()
     }
 }
 

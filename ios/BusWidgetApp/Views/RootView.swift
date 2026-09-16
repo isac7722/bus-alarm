@@ -2,6 +2,7 @@ import SwiftUI
 import WidgetKit
 
 struct RootView: View {
+    @EnvironmentObject private var waiting: BusWaitingManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var configuration = AppGroupStore()?.loadConfiguration()
     @State private var isEditing = AppGroupStore()?.loadConfiguration() == nil
@@ -20,9 +21,17 @@ struct RootView: View {
             }
         }
         .tint(AppTheme.primary)
+        .task { await waiting.restore() }
+        .onOpenURL { url in
+            if url.scheme == "buswidget", url.host == "waiting" {
+                isEditing = configuration == nil
+                Task { await waiting.restore() }
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, configuration != nil {
                 WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.kind)
+                Task { await waiting.restore() }
             }
         }
     }

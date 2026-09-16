@@ -90,7 +90,7 @@ func (l *fakeLimiter) Check(_ context.Context, id string) (LimitResult, error) {
 func testHandler() *Handler {
 	config, _ := parseConfig(map[string]string{})
 	config.CORSOrigins = []string{"https://allowed.example"}
-	return &Handler{config, &Service{fakeRepo{}, &fakeCache{}, &fakeClient{}, testLog()}, &fakeLimiter{}, testLog()}
+	return &Handler{Config: config, Service: &Service{fakeRepo{}, &fakeCache{}, &fakeClient{}, testLog()}, Limiter: &fakeLimiter{}, Log: testLog()}
 }
 func equalJSON(t *testing.T, a, b []byte) {
 	t.Helper()

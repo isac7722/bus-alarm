@@ -18,6 +18,7 @@ type Config struct {
 	CacheTTL, RateWindow, RateRequests                                              int
 	HTTPTimeout                                                                     time.Duration
 	CORSOrigins                                                                     []string
+	APNsKeyPath, APNsKeyID, APNsTeamID, APNsBundleID                                string
 }
 
 func LoadConfig() (Config, error) {
@@ -43,6 +44,10 @@ func parseConfig(env map[string]string) (Config, error) {
 		return d
 	}
 	c := Config{AppEnv: get("APP_ENV", "local"), AppName: get("APP_NAME", "BusWidget API"), Prefix: get("API_V1_PREFIX", "/api/v1"), APIKey: get("SEOUL_BUS_API_KEY", ""), APIBaseURL: strings.TrimRight(get("SEOUL_BUS_API_BASE_URL", "http://ws.bus.go.kr/api/rest/stationinfo"), "/"), DatabaseURL: get("DATABASE_URL", "postgresql+asyncpg://buswidget:buswidget@localhost:5432/buswidget"), RedisURL: get("REDIS_URL", "redis://localhost:6379/0"), CatalogPath: get("STATION_CATALOG_PATH", "../seoul_bus_statiosn.xlsx")}
+	c.APNsKeyPath = get("APNS_KEY_PATH", "")
+	c.APNsKeyID = get("APNS_KEY_ID", "")
+	c.APNsTeamID = get("APNS_TEAM_ID", "")
+	c.APNsBundleID = get("APNS_BUNDLE_ID", "com.pangjoong.BusWidget")
 	switch strings.ToLower(get("MOCK_ARRIVALS", "false")) {
 	case "true", "1", "on", "yes", "y", "t":
 		c.MockArrivals = true

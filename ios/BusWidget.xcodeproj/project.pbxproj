@@ -12,6 +12,8 @@
 		0D6E4130ADC23963CB3EB3FD /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F98EA8D67428A9757ACB32C /* APIError.swift */; };
 		180C6332D14134639057C532 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE713BF2BBFC5A056AEB044 /* RootView.swift */; };
 		1E9384692EEA7C24B9D4A8B5 /* ModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B17D35D3DDF80BB1FCCF15 /* ModelsTests.swift */; };
+		20548725715CE12C6DA82989 /* BusWaitingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8442A7D2DC39C2395BA536 /* BusWaitingAttributes.swift */; };
+		23787C438F63926239CDEDEF /* BusWaitingLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E129FF1BED402910B0E942C6 /* BusWaitingLiveActivity.swift */; };
 		26371165E4D9448650D5D7B5 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600AA69C0FD569783A53DF73 /* AppGroupStore.swift */; };
 		29D5702D8FA3F3EC6692CA18 /* StationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555302F7156C337CA92933A1 /* StationModels.swift */; };
 		2FD7A32AA5C3A66173C0364B /* RouteSelectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 282685905BB588BE85FE6821 /* RouteSelectionViewModel.swift */; };
@@ -23,6 +25,7 @@
 		403DD1857A10CD5B1F5B0CDD /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492632C9302F106AADACF091 /* PrivacyPolicyView.swift */; };
 		51C143E8FA71780346F31487 /* WidgetTimelineBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1D223632FE63BE9BA231E8 /* WidgetTimelineBuilder.swift */; };
 		5419420C78F54B07407DEA07 /* SavedConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDD70B3AE473450097862775 /* SavedConfigurationView.swift */; };
+		55E7A6951F567D85DE4957C3 /* BusWaitingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8442A7D2DC39C2395BA536 /* BusWaitingAttributes.swift */; };
 		5E67D74B73DB6BCB3CEDDB14 /* WidgetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */; };
 		623A59271D7B5DAF17FEC246 /* StationSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6125171464CDD53D870E85F4 /* StationSearchViewModel.swift */; };
 		691C5197EA703E3EB90BC4F3 /* ArrivalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BBC954AFBB6D5D835E8C863 /* ArrivalModels.swift */; };
@@ -31,7 +34,9 @@
 		844D675388CF1A22A4127257 /* BusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372A6A6921FFC12FAFCD1090 /* BusWidget.swift */; };
 		86248A27162CDF1E26E47353 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */; };
 		89D4BDE659A9359201DAF47C /* BusWidgetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C67ABF1468D008D0ADF4AE /* BusWidgetProvider.swift */; };
+		9A969DA4D115CF0942429138 /* LiveWaitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B2A33EB61F9E2C50B6A728 /* LiveWaitStore.swift */; };
 		9D80176E9F1BBC3384DAE1F3 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600AA69C0FD569783A53DF73 /* AppGroupStore.swift */; };
+		9E78124E10045E0D61C86D6B /* BusWaitingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */; };
 		A08E6705CEBD255AF8D57044 /* BusWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C476DA9355DA242982C86F9 /* BusWidgetView.swift */; };
 		A24C67E7439E86EBA964C36E /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */; };
 		A2B4562A81A4C68C41C63B45 /* WidgetTimelineBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1D223632FE63BE9BA231E8 /* WidgetTimelineBuilder.swift */; };
@@ -40,6 +45,8 @@
 		B22C7E38BC4A7674439D4B8F /* ArrivalCountdownFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */; };
 		B7BCBB142A72B3C04B60E293 /* BusWidgetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993A71734D4D9700020F85DB /* BusWidgetEntry.swift */; };
 		BFFD3FF70CF6F21122BC8BDF /* RouteArrivalRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288E002DE122F8B02D041256 /* RouteArrivalRow.swift */; };
+		C3F4A753AD37593421E6E083 /* BusWaitingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */; };
+		C679C39C3892E317A99266CF /* LiveActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 541F3465A5201E83CFF1ED3A /* LiveActivityTests.swift */; };
 		C8509F24DB0241F1D8DE81EF /* privacy.json in Resources */ = {isa = PBXBuildFile; fileRef = 6F4E55AAB28C80DE01F0D837 /* privacy.json */; };
 		C98E5EFC5ECD5D6878F2300A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AF80DA32639A2AC5438D91 /* APIClient.swift */; };
 		CBF7D92BA4A1001D041AF5B9 /* LockScreenBusWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E3C4CBB49F796E673260ED4 /* LockScreenBusWidgetView.swift */; };
@@ -93,12 +100,14 @@
 		2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetConstants.swift; sourceTree = "<group>"; };
 		30170C678794366A4BB8C097 /* BusWidgetApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BusWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		319D54A4D33FC139248076E2 /* TimelineBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineBuilderTests.swift; sourceTree = "<group>"; };
+		32B2A33EB61F9E2C50B6A728 /* LiveWaitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWaitStore.swift; sourceTree = "<group>"; };
 		372A6A6921FFC12FAFCD1090 /* BusWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidget.swift; sourceTree = "<group>"; };
 		3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		42BEFEC0E63528422D495EA6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		492632C9302F106AADACF091 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		4C476DA9355DA242982C86F9 /* BusWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetView.swift; sourceTree = "<group>"; };
 		4E514757809D77C8206C450C /* AppGroupStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStoreTests.swift; sourceTree = "<group>"; };
+		541F3465A5201E83CFF1ED3A /* LiveActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityTests.swift; sourceTree = "<group>"; };
 		555302F7156C337CA92933A1 /* StationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationModels.swift; sourceTree = "<group>"; };
 		561EA66547A2DD0D6779F1D6 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		5BBC954AFBB6D5D835E8C863 /* ArrivalModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalModels.swift; sourceTree = "<group>"; };
@@ -108,8 +117,10 @@
 		637517B559CB76413FEF32E1 /* ArrivalPredictionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalPredictionView.swift; sourceTree = "<group>"; };
 		6F4E55AAB28C80DE01F0D837 /* privacy.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = privacy.json; sourceTree = "<group>"; };
 		71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalCountdownFormatter.swift; sourceTree = "<group>"; };
+		79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingView.swift; sourceTree = "<group>"; };
 		7BE713BF2BBFC5A056AEB044 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		7D17C097AEA35D691DA2BDBE /* BusWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetApp.swift; sourceTree = "<group>"; };
+		841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingManager.swift; sourceTree = "<group>"; };
 		9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		94FBAB668A7DA40F5BB99A1D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		969ED381B4BF583AF75F9FF8 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -122,8 +133,10 @@
 		CF4FADDB19C3BC751E797941 /* ViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModelTests.swift; sourceTree = "<group>"; };
 		D08B7542DA02EB19C50C5489 /* BusWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = BusWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4C67ABF1468D008D0ADF4AE /* BusWidgetProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetProvider.swift; sourceTree = "<group>"; };
+		E129FF1BED402910B0E942C6 /* BusWaitingLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingLiveActivity.swift; sourceTree = "<group>"; };
 		E97445AFE2C15E5823EC22DF /* BusWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BusWidgetExtension.entitlements; sourceTree = "<group>"; };
 		F17496460C5C3962538E977F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FA8442A7D2DC39C2395BA536 /* BusWaitingAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingAttributes.swift; sourceTree = "<group>"; };
 		FDD70B3AE473450097862775 /* SavedConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedConfigurationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -188,6 +201,7 @@
 			isa = PBXGroup;
 			children = (
 				9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */,
+				79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */,
 				492632C9302F106AADACF091 /* PrivacyPolicyView.swift */,
 				7BE713BF2BBFC5A056AEB044 /* RootView.swift */,
 				9C63CC0ABD61D347757B8121 /* RouteSelectionView.swift */,
@@ -222,6 +236,8 @@
 		5DB66BB7F6BC948B21E600CF /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */,
+				32B2A33EB61F9E2C50B6A728 /* LiveWaitStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -230,6 +246,7 @@
 			isa = PBXGroup;
 			children = (
 				4E514757809D77C8206C450C /* AppGroupStoreTests.swift */,
+				541F3465A5201E83CFF1ED3A /* LiveActivityTests.swift */,
 				C2B17D35D3DDF80BB1FCCF15 /* ModelsTests.swift */,
 				CF4FADDB19C3BC751E797941 /* ViewModelTests.swift */,
 			);
@@ -258,6 +275,7 @@
 				0F98EA8D67428A9757ACB32C /* APIError.swift */,
 				71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */,
 				5BBC954AFBB6D5D835E8C863 /* ArrivalModels.swift */,
+				FA8442A7D2DC39C2395BA536 /* BusWaitingAttributes.swift */,
 				555302F7156C337CA92933A1 /* StationModels.swift */,
 				C08C15F57B93B62B2A4BFD3A /* WidgetConfigurationData.swift */,
 				2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */,
@@ -310,6 +328,7 @@
 		FB5FC82DC785A3B615A4CC84 /* BusWidgetExtension */ = {
 			isa = PBXGroup;
 			children = (
+				E129FF1BED402910B0E942C6 /* BusWaitingLiveActivity.swift */,
 				372A6A6921FFC12FAFCD1090 /* BusWidget.swift */,
 				993A71734D4D9700020F85DB /* BusWidgetEntry.swift */,
 				E97445AFE2C15E5823EC22DF /* BusWidgetExtension.entitlements */,
@@ -455,6 +474,8 @@
 				B22C7E38BC4A7674439D4B8F /* ArrivalCountdownFormatter.swift in Sources */,
 				691C5197EA703E3EB90BC4F3 /* ArrivalModels.swift in Sources */,
 				08AB603CE3023D0F4FDC94C5 /* ArrivalPredictionView.swift in Sources */,
+				20548725715CE12C6DA82989 /* BusWaitingAttributes.swift in Sources */,
+				23787C438F63926239CDEDEF /* BusWaitingLiveActivity.swift in Sources */,
 				844D675388CF1A22A4127257 /* BusWidget.swift in Sources */,
 				B7BCBB142A72B3C04B60E293 /* BusWidgetEntry.swift in Sources */,
 				89D4BDE659A9359201DAF47C /* BusWidgetProvider.swift in Sources */,
@@ -478,7 +499,11 @@
 				A24C67E7439E86EBA964C36E /* AppTheme.swift in Sources */,
 				7D99E7DB964A98D58FE6BE38 /* ArrivalCountdownFormatter.swift in Sources */,
 				E3AFB62AAE7C2D295BE473AB /* ArrivalModels.swift in Sources */,
+				55E7A6951F567D85DE4957C3 /* BusWaitingAttributes.swift in Sources */,
+				9E78124E10045E0D61C86D6B /* BusWaitingManager.swift in Sources */,
+				C3F4A753AD37593421E6E083 /* BusWaitingView.swift in Sources */,
 				37E9C5BDEC9E117335BF2C20 /* BusWidgetApp.swift in Sources */,
+				9A969DA4D115CF0942429138 /* LiveWaitStore.swift in Sources */,
 				403DD1857A10CD5B1F5B0CDD /* PrivacyPolicyView.swift in Sources */,
 				180C6332D14134639057C532 /* RootView.swift in Sources */,
 				E750FAE0E20FDCEF2074E8B2 /* RouteSelectionView.swift in Sources */,
@@ -498,6 +523,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				736094BD015288BBD50966EB /* AppGroupStoreTests.swift in Sources */,
+				C679C39C3892E317A99266CF /* LiveActivityTests.swift in Sources */,
 				1E9384692EEA7C24B9D4A8B5 /* ModelsTests.swift in Sources */,
 				0409B04F9C2BCF257D6E15C4 /* TimelineBuilderTests.swift in Sources */,
 				B21F205774B9E44E5935A4F5 /* ViewModelTests.swift in Sources */,

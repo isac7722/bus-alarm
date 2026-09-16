@@ -21,6 +21,7 @@ type Handler struct {
 	Service *Service
 	Limiter Limiter
 	Log     *slog.Logger
+	Live    *LiveActivities
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +68,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := r.URL.Path
+	if path == h.Config.Prefix+"/live-activities" || path == h.Config.Prefix+"/live-activities/availability" {
+		status = h.serveLive(w, r)
+		return
+	}
 	kind, id := h.route(path)
 	if kind == "" && path != "/" {
 		trimmed := strings.TrimRight(path, "/")
@@ -235,7 +240,11 @@ func (h *Handler) cors(w http.ResponseWriter, r *http.Request) bool {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 			}
 		}
-		w.Header().Set("Access-Control-Allow-Methods", "GET")
+		methods := []string{"GET"}
+		if r.URL.Path == h.Config.Prefix+"/live-activities" {
+			methods = []string{"POST", "DELETE"}
+		}
+		w.Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ", "))
 		w.Header().Set("Access-Control-Max-Age", "600")
 		if headers := r.Header.Get("Access-Control-Request-Headers"); headers != "" {
 			w.Header().Set("Access-Control-Allow-Headers", headers)
@@ -244,7 +253,13 @@ func (h *Handler) cors(w http.ResponseWriter, r *http.Request) bool {
 		if !allowed {
 			failures = append(failures, "origin")
 		}
-		if r.Header.Get("Access-Control-Request-Method") != "GET" {
+		methodAllowed := false
+		for _, method := range methods {
+			if r.Header.Get("Access-Control-Request-Method") == method {
+				methodAllowed = true
+			}
+		}
+		if !methodAllowed {
 			failures = append(failures, "method")
 		}
 		status, body := 200, "OK"

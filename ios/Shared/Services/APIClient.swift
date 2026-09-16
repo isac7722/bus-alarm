@@ -32,9 +32,31 @@ struct APIClient: Sendable {
         )
     }
 
+    func liveActivitiesAvailable() async throws -> Bool {
+        struct Availability: Decodable { let available: Bool }
+        let result: Availability = try await get(path: "/api/v1/live-activities/availability")
+        return result.available
+    }
+
+    func registerLiveWait(
+        secret: String, stationId: String, routeId: String, pushToken: String, environment: String
+    ) async throws -> LiveWaitRegistration {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "station_id": stationId, "route_id": routeId, "push_token": pushToken, "environment": environment
+        ])
+        return try await get(path: "/api/v1/live-activities", method: "POST", body: body, secret: secret)
+    }
+
+    func endLiveWait(secret: String) async throws {
+        let _: LiveWaitRegistration = try await get(path: "/api/v1/live-activities", method: "DELETE", secret: secret)
+    }
+
     private func get<Response: Decodable>(
         path: String,
-        queryItems: [URLQueryItem] = []
+        queryItems: [URLQueryItem] = [],
+        method: String = "GET",
+        body: Data? = nil,
+        secret: String? = nil
     ) async throws -> Response {
         guard var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false) else {
             throw APIClientError.invalidBaseURL
@@ -43,6 +65,10 @@ struct APIClient: Sendable {
         guard let url = components.url else { throw APIClientError.invalidBaseURL }
 
         var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.httpBody = body
+        if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
+        if let secret { request.setValue("Bearer \(secret)", forHTTPHeaderField: "Authorization") }
         request.timeoutInterval = 8
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
@@ -74,4 +100,3 @@ struct APIClient: Sendable {
         return URL(string: value)
     }
 }
-

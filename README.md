@@ -154,3 +154,9 @@ xcodebuild -project BusWidget.xcodeproj -scheme BusWidget \
 ```
 
 실기기에서는 App Group 공유, 앱 저장 직후 위젯 reload, 소형/중형 레이아웃, 라이트/다크 모드, 큰 글자, 네트워크 단절 시 마지막 성공 데이터와 stale 표시를 별도로 확인해야 합니다. WidgetKit 갱신 시각은 시스템 budget에 따라 달라지므로 디버거 결과만으로 운영 갱신 주기를 보장할 수 없습니다.
+
+## 버스 기다리기 · 실시간 현황
+
+저장한 노선 중 하나를 선택해 잠금 화면과 다이내믹 아일랜드에서 도착 상황을 확인할 수 있습니다. 앱에서 **버스 기다리기**로 시작하고 **대기 종료**로 중지합니다.
+
+잠금 중 갱신에는 별도의 Apple Developer **APNs 키**와 서버 설정이 필요합니다. TestFlight 업로드용 App Store Connect 키로는 대체할 수 없습니다. [APNs 설정·Docker 실행·실기기 확인 방법](docs/live-activities.md)을 참고하세요.

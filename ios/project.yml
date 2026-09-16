@@ -48,6 +48,10 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: 버스 위젯
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.pangjoong.BusWidget.waiting
+            CFBundleURLSchemes: [buswidget]
         UILaunchScreen: {}
         APIBaseURL: $(API_BASE_URL)
         NSAppTransportSecurity:
@@ -57,6 +61,7 @@ targets:
     entitlements:
       path: BusWidgetApp/BusWidgetApp.entitlements
       properties:
+        aps-environment: development
         com.apple.security.application-groups:
           - group.com.pangjoong.buswidget
     dependencies:
