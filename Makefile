@@ -8,8 +8,16 @@ HEALTH_ATTEMPTS ?= 30
 IOS_DIR := ios
 XCODE_PROJECT := $(IOS_DIR)/BusWidget.xcodeproj
 SIMULATOR ?= iPhone 17 Pro
+UV ?= uv
+# Optional station import inputs. An explicit ENV_FILE selects direct DB access.
+CSV ?=
+ENV_FILE ?=
+DB_ENV ?=
+CONTAINER ?=
+STATION_DB_ENV = $(if $(DB_ENV),$(DB_ENV),$(if $(ENV_FILE),DATABASE_URL))
+STATION_COMMAND = $(UV) run $(if $(ENV_FILE),--env-file "$(ENV_FILE)") python backend/scripts/update_seoul_stations.py $(if $(CSV),--csv "$(CSV)") $(if $(STATION_DB_ENV),--database-url-env "$(STATION_DB_ENV)") $(if $(CONTAINER),--container "$(CONTAINER)")
 
-.PHONY: help dev server xcode stop restart logs status test test-backend test-backend-unit test-backend-integration test-ios wait-server check-docker check-xcode testflight testflight-check testflight-status testflight-script-test
+.PHONY: help setup stations-check stations-preview stations-update test-stations dev server xcode stop restart logs status test test-backend test-backend-unit test-backend-integration test-ios wait-server check-docker check-xcode testflight testflight-check testflight-status testflight-script-test
 
 help: ## 사용 가능한 Make 명령을 표시합니다.
 	@echo "BusWidget 개발 명령"
@@ -17,6 +25,23 @@ help: ## 사용 가능한 Make 명령을 표시합니다.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo
 	@echo "예시: make dev, make logs, make test SIMULATOR=\"iPhone 17 Pro\""
+
+setup: ## uv sync로 정류장 관리 도구의 Python·패키지를 설치합니다.
+	$(UV) sync --locked
+
+stations-check: ## DB 접속 없이 정류장 CSV를 검증합니다. CSV=경로 지정 가능.
+	$(STATION_COMMAND) --validate-only
+
+stations-preview: ## 정류장 추가·수정 예정 건수를 확인합니다. ENV_FILE=경로로 직접 DB 연결.
+	$(STATION_COMMAND)
+
+stations-update: ## 서울·경기도 경유 정류장 추가·수정을 DB에 적용합니다.
+	$(STATION_COMMAND) --apply
+
+test-stations: ## 정류장 관리 스크립트의 lint·포맷·테스트를 실행합니다.
+	$(UV) run ruff check backend/scripts
+	$(UV) run ruff format --check backend/scripts
+	$(UV) run python -m unittest discover -s backend/scripts/tests -v
 
 dev: ## 서버가 준비되면 Xcode 프로젝트를 생성하고 엽니다.
 	@$(MAKE) --no-print-directory server

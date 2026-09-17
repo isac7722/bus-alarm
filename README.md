@@ -45,6 +45,31 @@ make help      전체 명령 도움말
 
 첫 실행에서 Go 마이그레이션과 전체 엑셀 import가 자동으로 완료된 뒤 API가 시작됩니다. 호스트 포트는 API 8000, PostgreSQL 5433, Redis 6379입니다.
 
+## 정류장 데이터 보강
+
+프로젝트 루트에서 실행합니다. uv가 설치되어 있어야 합니다.
+기본 입력은 루트의 전국 정류장 CSV이며, 서울과 서울BIS의 경기도 경유 정류장을 보강합니다.
+
+```bash
+make setup             # uv sync: Python·패키지 설치
+make stations-check    # CSV 검증, DB 접속 없음
+make stations-preview  # 추가·수정 예정 건수 확인
+make stations-update   # 실제 DB 반영
+make test-stations     # 스크립트 검사와 테스트
+```
+
+기본 연결은 실행 중인 Compose PostgreSQL입니다. 다른 서버의 DB에 직접 연결하려면
+접속 가능한 `DATABASE_URL`이 있는 환경 파일을 지정합니다.
+
+```bash
+make stations-preview ENV_FILE=backend/.env
+make stations-update ENV_FILE=backend/.env
+```
+
+다른 CSV는 `CSV='/경로/정류장.csv'`, 이미 설정한 DB 환경변수는 `DB_ENV=DATABASE_URL`로 지정합니다.
+기존 정류장·노선 연결은 보존하지만 신규 정류장의 노선 연결은 별도로 필요합니다.
+DB 준비, 제외 기준, 기존 엑셀 import 재실행 시 주의점은 [백엔드 사용 안내](backend/README.md#전국-csv로-서울경기도-경유-정류장-보강)를 참고하세요.
+
 ## iOS 실행
 
 서버가 이미 실행 중이면 프로젝트 루트에서 `make xcode`만 실행합니다. 서버까지 함께 시작하려면 `make dev`를 사용합니다.
