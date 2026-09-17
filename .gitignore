@@ -13,6 +13,7 @@ backend/.venv/
 backend/.coverage
 backend/htmlcov/
 ios/Config/Local.xcconfig
+ios/Config/NaverMaps.local.xcconfig
 ios/DerivedData/
 DerivedData/
 *.xcuserstate

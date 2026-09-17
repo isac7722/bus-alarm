@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0409B04F9C2BCF257D6E15C4 /* TimelineBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 319D54A4D33FC139248076E2 /* TimelineBuilderTests.swift */; };
-		08AB603CE3023D0F4FDC94C5 /* ArrivalPredictionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 637517B559CB76413FEF32E1 /* ArrivalPredictionView.swift */; };
 		0D6E4130ADC23963CB3EB3FD /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F98EA8D67428A9757ACB32C /* APIError.swift */; };
 		11BDA6479C32BD0FBF9956CE /* StationFinderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03DA10DEFD38809132CB108 /* StationFinderView.swift */; };
 		180C6332D14134639057C532 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE713BF2BBFC5A056AEB044 /* RootView.swift */; };
@@ -21,57 +19,46 @@
 		27FB93C4ED828237D618D89F /* RouteCatalogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31040BF1C7BF838879B3F158 /* RouteCatalogModels.swift */; };
 		29D5702D8FA3F3EC6692CA18 /* StationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555302F7156C337CA92933A1 /* StationModels.swift */; };
 		2A205E4D58AB6462D5ACE6F8 /* RouteCatalogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31040BF1C7BF838879B3F158 /* RouteCatalogModels.swift */; };
-		2FD7A32AA5C3A66173C0364B /* RouteSelectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 282685905BB588BE85FE6821 /* RouteSelectionViewModel.swift */; };
 		3241098139C71D27E45E993F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F17496460C5C3962538E977F /* Assets.xcassets */; };
 		37E9C5BDEC9E117335BF2C20 /* BusWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D17C097AEA35D691DA2BDBE /* BusWidgetApp.swift */; };
 		39ACC70EDE85FD4D9E785646 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */; };
+		3C3302EDF3015DB4FFB20DB1 /* TransitMarkerLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E47E81167DE17FC3261C155 /* TransitMarkerLayout.swift */; };
 		3C9227FF3E4A6AFA3AA0D086 /* WidgetConfigurationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08C15F57B93B62B2A4BFD3A /* WidgetConfigurationData.swift */; };
-		3FD2B20D00F0686377D32C34 /* WidgetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */; };
+		3FB5EEC0B955DE1107AF7AA7 /* TransitMarkerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B3E2C689D0248553157F4E /* TransitMarkerTests.swift */; };
 		403DD1857A10CD5B1F5B0CDD /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 492632C9302F106AADACF091 /* PrivacyPolicyView.swift */; };
-		51C143E8FA71780346F31487 /* WidgetTimelineBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1D223632FE63BE9BA231E8 /* WidgetTimelineBuilder.swift */; };
-		5419420C78F54B07407DEA07 /* SavedConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDD70B3AE473450097862775 /* SavedConfigurationView.swift */; };
 		55E7A6951F567D85DE4957C3 /* BusWaitingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8442A7D2DC39C2395BA536 /* BusWaitingAttributes.swift */; };
-		5E67D74B73DB6BCB3CEDDB14 /* WidgetConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */; };
-		623A59271D7B5DAF17FEC246 /* StationSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6125171464CDD53D870E85F4 /* StationSearchViewModel.swift */; };
 		691C5197EA703E3EB90BC4F3 /* ArrivalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BBC954AFBB6D5D835E8C863 /* ArrivalModels.swift */; };
+		7048587313E6ED854DE36BDE /* TransitColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF2654F694EC708E1F502B5 /* TransitColors.swift */; };
 		736094BD015288BBD50966EB /* AppGroupStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E514757809D77C8206C450C /* AppGroupStoreTests.swift */; };
 		7D99E7DB964A98D58FE6BE38 /* ArrivalCountdownFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */; };
-		80FC0C96B6D1090B1B8822C4 /* RouteMapSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC754B3343031D05F80D90C /* RouteMapSelectionView.swift */; };
 		844D675388CF1A22A4127257 /* BusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372A6A6921FFC12FAFCD1090 /* BusWidget.swift */; };
 		86248A27162CDF1E26E47353 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */; };
 		8674514D5CF695927D06674E /* StationBusSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA4EEACB98E9637888D21A94 /* StationBusSelectionView.swift */; };
-		89D4BDE659A9359201DAF47C /* BusWidgetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C67ABF1468D008D0ADF4AE /* BusWidgetProvider.swift */; };
+		89FC928EC2F8C833ACBF6575 /* StationLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09BDBC538D46428224237414 /* StationLocationService.swift */; };
 		8B05634120A320DAAFF82EF0 /* StationBusViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D491E717CD850087A9016A1A /* StationBusViewModel.swift */; };
 		918E6EDE712AB83528DECA38 /* StationFinderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08A6EE3C708AAB1801EE72CD /* StationFinderViewModel.swift */; };
+		96C14E5801CC5609C16B7CE1 /* NMapsMap in Frameworks */ = {isa = PBXBuildFile; productRef = 395E87FC1F31E9DC670EFE6F /* NMapsMap */; };
 		9742383F25D4F555AFBB181D /* FavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62B4667350328DBEA2C7042 /* FavoritesView.swift */; };
-		988E5AF6E1FE09530E6BEC1C /* RouteMapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6E709E18F9F619145483817 /* RouteMapViewModel.swift */; };
 		9A969DA4D115CF0942429138 /* LiveWaitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B2A33EB61F9E2C50B6A728 /* LiveWaitStore.swift */; };
 		9D80176E9F1BBC3384DAE1F3 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600AA69C0FD569783A53DF73 /* AppGroupStore.swift */; };
 		9E78124E10045E0D61C86D6B /* BusWaitingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */; };
-		A08E6705CEBD255AF8D57044 /* BusWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C476DA9355DA242982C86F9 /* BusWidgetView.swift */; };
 		A24C67E7439E86EBA964C36E /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */; };
-		A2B4562A81A4C68C41C63B45 /* WidgetTimelineBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1D223632FE63BE9BA231E8 /* WidgetTimelineBuilder.swift */; };
-		A4B4589EDDE2A1CD38CCA129 /* BusSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C0C49BA687205AD4E133742 /* BusSearchView.swift */; };
 		ADA9E54117AB772702C8638E /* BusWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D08B7542DA02EB19C50C5489 /* BusWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		B21F205774B9E44E5935A4F5 /* ViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF4FADDB19C3BC751E797941 /* ViewModelTests.swift */; };
 		B22C7E38BC4A7674439D4B8F /* ArrivalCountdownFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */; };
-		B7BCBB142A72B3C04B60E293 /* BusWidgetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 993A71734D4D9700020F85DB /* BusWidgetEntry.swift */; };
 		BAEB902F66D0FA6CE8FC4EFC /* SavedStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E88597FF98C918F6D0B3B0 /* SavedStop.swift */; };
-		BFFD3FF70CF6F21122BC8BDF /* RouteArrivalRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288E002DE122F8B02D041256 /* RouteArrivalRow.swift */; };
+		C12B0811EE4933A8DC06B340 /* NaverTransitMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B276513ED7B006E59422E0A3 /* NaverTransitMap.swift */; };
 		C268A9391322720DADE267A1 /* RouteMapUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19CCCBD346A7701F785328DF /* RouteMapUITests.swift */; };
+		C279E59E3307E7E9BAE64F03 /* TransitColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF2654F694EC708E1F502B5 /* TransitColors.swift */; };
 		C3F4A753AD37593421E6E083 /* BusWaitingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */; };
 		C679C39C3892E317A99266CF /* LiveActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 541F3465A5201E83CFF1ED3A /* LiveActivityTests.swift */; };
 		C8509F24DB0241F1D8DE81EF /* privacy.json in Resources */ = {isa = PBXBuildFile; fileRef = 6F4E55AAB28C80DE01F0D837 /* privacy.json */; };
 		C98E5EFC5ECD5D6878F2300A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AF80DA32639A2AC5438D91 /* APIClient.swift */; };
-		CBF7D92BA4A1001D041AF5B9 /* LockScreenBusWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E3C4CBB49F796E673260ED4 /* LockScreenBusWidgetView.swift */; };
 		CDF38024522D7B0FCF32E8EF /* SavedStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E88597FF98C918F6D0B3B0 /* SavedStop.swift */; };
 		D16CDE90F36C75EF12B350ED /* StationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555302F7156C337CA92933A1 /* StationModels.swift */; };
 		DB937477722A4B2F3F0101FB /* WidgetConfigurationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08C15F57B93B62B2A4BFD3A /* WidgetConfigurationData.swift */; };
 		E3AFB62AAE7C2D295BE473AB /* ArrivalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BBC954AFBB6D5D835E8C863 /* ArrivalModels.swift */; };
-		E750FAE0E20FDCEF2074E8B2 /* RouteSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C63CC0ABD61D347757B8121 /* RouteSelectionView.swift */; };
 		E9869D3AF51D5829283824FC /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F98EA8D67428A9757ACB32C /* APIError.swift */; };
 		EADBD59E406C26B1BE4598D2 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AF80DA32639A2AC5438D91 /* APIClient.swift */; };
-		FBE41E376DEB4000E43E3E6B /* StationSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B16ECE7896CD22EDF175D9C4 /* StationSearchView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -114,76 +101,70 @@
 
 /* Begin PBXFileReference section */
 		08A6EE3C708AAB1801EE72CD /* StationFinderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationFinderViewModel.swift; sourceTree = "<group>"; };
+		09BDBC538D46428224237414 /* StationLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationLocationService.swift; sourceTree = "<group>"; };
 		0A179BE2D5C3FF0C5A8DF99E /* BusWidgetApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BusWidgetApp.entitlements; sourceTree = "<group>"; };
-		0E3C4CBB49F796E673260ED4 /* LockScreenBusWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenBusWidgetView.swift; sourceTree = "<group>"; };
 		0F98EA8D67428A9757ACB32C /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		159A9C3F49B7138D08908BBC /* BusWidgetTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BusWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		19CCCBD346A7701F785328DF /* RouteMapUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapUITests.swift; sourceTree = "<group>"; };
 		21CB4E310200418692219ABB /* RouteMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapTests.swift; sourceTree = "<group>"; };
-		282685905BB588BE85FE6821 /* RouteSelectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteSelectionViewModel.swift; sourceTree = "<group>"; };
-		288E002DE122F8B02D041256 /* RouteArrivalRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteArrivalRow.swift; sourceTree = "<group>"; };
-		2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetConstants.swift; sourceTree = "<group>"; };
+		2E47E81167DE17FC3261C155 /* TransitMarkerLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitMarkerLayout.swift; sourceTree = "<group>"; };
 		2F5C2F1662C871764E78C928 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		30170C678794366A4BB8C097 /* BusWidgetApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BusWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		31040BF1C7BF838879B3F158 /* RouteCatalogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteCatalogModels.swift; sourceTree = "<group>"; };
-		319D54A4D33FC139248076E2 /* TimelineBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineBuilderTests.swift; sourceTree = "<group>"; };
 		32B2A33EB61F9E2C50B6A728 /* LiveWaitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWaitStore.swift; sourceTree = "<group>"; };
 		372A6A6921FFC12FAFCD1090 /* BusWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidget.swift; sourceTree = "<group>"; };
 		3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3FDD90939735E570F4AEE875 /* BusWidgetUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BusWidgetUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		42BEFEC0E63528422D495EA6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		43B3E2C689D0248553157F4E /* TransitMarkerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitMarkerTests.swift; sourceTree = "<group>"; };
 		492632C9302F106AADACF091 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
-		4C0C49BA687205AD4E133742 /* BusSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusSearchView.swift; sourceTree = "<group>"; };
-		4C476DA9355DA242982C86F9 /* BusWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetView.swift; sourceTree = "<group>"; };
 		4E514757809D77C8206C450C /* AppGroupStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStoreTests.swift; sourceTree = "<group>"; };
 		541F3465A5201E83CFF1ED3A /* LiveActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityTests.swift; sourceTree = "<group>"; };
 		555302F7156C337CA92933A1 /* StationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationModels.swift; sourceTree = "<group>"; };
 		561EA66547A2DD0D6779F1D6 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		5BBC954AFBB6D5D835E8C863 /* ArrivalModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalModels.swift; sourceTree = "<group>"; };
-		5E1D223632FE63BE9BA231E8 /* WidgetTimelineBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTimelineBuilder.swift; sourceTree = "<group>"; };
 		600AA69C0FD569783A53DF73 /* AppGroupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStore.swift; sourceTree = "<group>"; };
-		6125171464CDD53D870E85F4 /* StationSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationSearchViewModel.swift; sourceTree = "<group>"; };
-		637517B559CB76413FEF32E1 /* ArrivalPredictionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalPredictionView.swift; sourceTree = "<group>"; };
 		6F4E55AAB28C80DE01F0D837 /* privacy.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = privacy.json; sourceTree = "<group>"; };
 		71399F41FA2ABBF79396A6F6 /* ArrivalCountdownFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalCountdownFormatter.swift; sourceTree = "<group>"; };
 		79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingView.swift; sourceTree = "<group>"; };
 		7BE713BF2BBFC5A056AEB044 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		7D17C097AEA35D691DA2BDBE /* BusWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetApp.swift; sourceTree = "<group>"; };
 		841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingManager.swift; sourceTree = "<group>"; };
+		8EF2654F694EC708E1F502B5 /* TransitColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitColors.swift; sourceTree = "<group>"; };
 		9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		94FBAB668A7DA40F5BB99A1D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		969ED381B4BF583AF75F9FF8 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
-		993A71734D4D9700020F85DB /* BusWidgetEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetEntry.swift; sourceTree = "<group>"; };
-		9C63CC0ABD61D347757B8121 /* RouteSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteSelectionView.swift; sourceTree = "<group>"; };
 		A03DA10DEFD38809132CB108 /* StationFinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationFinderView.swift; sourceTree = "<group>"; };
-		B16ECE7896CD22EDF175D9C4 /* StationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationSearchView.swift; sourceTree = "<group>"; };
+		B276513ED7B006E59422E0A3 /* NaverTransitMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NaverTransitMap.swift; sourceTree = "<group>"; };
 		C08C15F57B93B62B2A4BFD3A /* WidgetConfigurationData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetConfigurationData.swift; sourceTree = "<group>"; };
 		C2B17D35D3DDF80BB1FCCF15 /* ModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsTests.swift; sourceTree = "<group>"; };
 		C3E88597FF98C918F6D0B3B0 /* SavedStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStop.swift; sourceTree = "<group>"; };
 		C5AF80DA32639A2AC5438D91 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		C62B4667350328DBEA2C7042 /* FavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesView.swift; sourceTree = "<group>"; };
-		C6E709E18F9F619145483817 /* RouteMapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapViewModel.swift; sourceTree = "<group>"; };
-		CF4FADDB19C3BC751E797941 /* ViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModelTests.swift; sourceTree = "<group>"; };
 		D08B7542DA02EB19C50C5489 /* BusWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = BusWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D491E717CD850087A9016A1A /* StationBusViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationBusViewModel.swift; sourceTree = "<group>"; };
-		D4C67ABF1468D008D0ADF4AE /* BusWidgetProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetProvider.swift; sourceTree = "<group>"; };
 		DA4EEACB98E9637888D21A94 /* StationBusSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationBusSelectionView.swift; sourceTree = "<group>"; };
-		DEC754B3343031D05F80D90C /* RouteMapSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapSelectionView.swift; sourceTree = "<group>"; };
 		E129FF1BED402910B0E942C6 /* BusWaitingLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingLiveActivity.swift; sourceTree = "<group>"; };
 		E97445AFE2C15E5823EC22DF /* BusWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BusWidgetExtension.entitlements; sourceTree = "<group>"; };
 		F17496460C5C3962538E977F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FA8442A7D2DC39C2395BA536 /* BusWaitingAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingAttributes.swift; sourceTree = "<group>"; };
-		FDD70B3AE473450097862775 /* SavedConfigurationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedConfigurationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D77B5095108DE9EBB0DDE351 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				96C14E5801CC5609C16B7CE1 /* NMapsMap in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		1793A478F4ED458A11E06EF5 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				637517B559CB76413FEF32E1 /* ArrivalPredictionView.swift */,
-				4C476DA9355DA242982C86F9 /* BusWidgetView.swift */,
-				0E3C4CBB49F796E673260ED4 /* LockScreenBusWidgetView.swift */,
-				288E002DE122F8B02D041256 /* RouteArrivalRow.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -219,6 +200,7 @@
 			isa = PBXGroup;
 			children = (
 				3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */,
+				8EF2654F694EC708E1F502B5 /* TransitColors.swift */,
 				A4652424D346528BE26C303E /* Models */,
 				35C1055EB05A03A644E884D6 /* Services */,
 				494C4CA4683E4B6A84B08BD8 /* Storage */,
@@ -246,27 +228,16 @@
 			isa = PBXGroup;
 			children = (
 				9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */,
-				4C0C49BA687205AD4E133742 /* BusSearchView.swift */,
 				79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */,
 				C62B4667350328DBEA2C7042 /* FavoritesView.swift */,
+				B276513ED7B006E59422E0A3 /* NaverTransitMap.swift */,
 				492632C9302F106AADACF091 /* PrivacyPolicyView.swift */,
 				7BE713BF2BBFC5A056AEB044 /* RootView.swift */,
-				DEC754B3343031D05F80D90C /* RouteMapSelectionView.swift */,
-				9C63CC0ABD61D347757B8121 /* RouteSelectionView.swift */,
-				FDD70B3AE473450097862775 /* SavedConfigurationView.swift */,
 				DA4EEACB98E9637888D21A94 /* StationBusSelectionView.swift */,
 				A03DA10DEFD38809132CB108 /* StationFinderView.swift */,
-				B16ECE7896CD22EDF175D9C4 /* StationSearchView.swift */,
+				2E47E81167DE17FC3261C155 /* TransitMarkerLayout.swift */,
 			);
 			path = Views;
-			sourceTree = "<group>";
-		};
-		4F3B9F53D5314F7761DACF94 /* BusWidgetExtensionTests */ = {
-			isa = PBXGroup;
-			children = (
-				319D54A4D33FC139248076E2 /* TimelineBuilderTests.swift */,
-			);
-			path = BusWidgetExtensionTests;
 			sourceTree = "<group>";
 		};
 		5890EEC53418E6074573BDC7 = {
@@ -274,7 +245,6 @@
 			children = (
 				CEBF9A191A5315A5728B67EC /* BusWidgetApp */,
 				FB5FC82DC785A3B615A4CC84 /* BusWidgetExtension */,
-				4F3B9F53D5314F7761DACF94 /* BusWidgetExtensionTests */,
 				71D8F6C4550ABF910C97E540 /* BusWidgetTests */,
 				325050725061D19E79635D43 /* BusWidgetUITests */,
 				83C96D664AA946A589ADEB88 /* Config */,
@@ -300,7 +270,7 @@
 				541F3465A5201E83CFF1ED3A /* LiveActivityTests.swift */,
 				C2B17D35D3DDF80BB1FCCF15 /* ModelsTests.swift */,
 				21CB4E310200418692219ABB /* RouteMapTests.swift */,
-				CF4FADDB19C3BC751E797941 /* ViewModelTests.swift */,
+				43B3E2C689D0248553157F4E /* TransitMarkerTests.swift */,
 			);
 			path = BusWidgetTests;
 			sourceTree = "<group>";
@@ -332,8 +302,6 @@
 				C3E88597FF98C918F6D0B3B0 /* SavedStop.swift */,
 				555302F7156C337CA92933A1 /* StationModels.swift */,
 				C08C15F57B93B62B2A4BFD3A /* WidgetConfigurationData.swift */,
-				2B928AE22B67ABC236F8AB49 /* WidgetConstants.swift */,
-				5E1D223632FE63BE9BA231E8 /* WidgetTimelineBuilder.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -351,11 +319,9 @@
 			isa = PBXGroup;
 			children = (
 				2F5C2F1662C871764E78C928 /* FavoritesStore.swift */,
-				C6E709E18F9F619145483817 /* RouteMapViewModel.swift */,
-				282685905BB588BE85FE6821 /* RouteSelectionViewModel.swift */,
 				D491E717CD850087A9016A1A /* StationBusViewModel.swift */,
 				08A6EE3C708AAB1801EE72CD /* StationFinderViewModel.swift */,
-				6125171464CDD53D870E85F4 /* StationSearchViewModel.swift */,
+				09BDBC538D46428224237414 /* StationLocationService.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -388,9 +354,7 @@
 			children = (
 				E129FF1BED402910B0E942C6 /* BusWaitingLiveActivity.swift */,
 				372A6A6921FFC12FAFCD1090 /* BusWidget.swift */,
-				993A71734D4D9700020F85DB /* BusWidgetEntry.swift */,
 				E97445AFE2C15E5823EC22DF /* BusWidgetExtension.entitlements */,
-				D4C67ABF1468D008D0ADF4AE /* BusWidgetProvider.swift */,
 				94FBAB668A7DA40F5BB99A1D /* Info.plist */,
 				1793A478F4ED458A11E06EF5 /* Views */,
 			);
@@ -406,6 +370,7 @@
 			buildPhases = (
 				A259CE3D611BD3BCF0F744A1 /* Sources */,
 				3C619799EFE8A8B3D59788E8 /* Resources */,
+				D77B5095108DE9EBB0DDE351 /* Frameworks */,
 				4282895D36F2A00827C39FF3 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -415,6 +380,7 @@
 			);
 			name = BusWidgetApp;
 			packageProductDependencies = (
+				395E87FC1F31E9DC670EFE6F /* NMapsMap */,
 			);
 			productName = BusWidgetApp;
 			productReference = 30170C678794366A4BB8C097 /* BusWidgetApp.app */;
@@ -511,6 +477,9 @@
 			);
 			mainGroup = 5890EEC53418E6074573BDC7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8E53712CD785C84EA2460EE1 /* XCRemoteSwiftPackageReference "SPM-NMapsMap" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1B6EAEBD4267CC84527F9970 /* Products */;
 			projectDirPath = "";
@@ -563,21 +532,14 @@
 				9D80176E9F1BBC3384DAE1F3 /* AppGroupStore.swift in Sources */,
 				B22C7E38BC4A7674439D4B8F /* ArrivalCountdownFormatter.swift in Sources */,
 				691C5197EA703E3EB90BC4F3 /* ArrivalModels.swift in Sources */,
-				08AB603CE3023D0F4FDC94C5 /* ArrivalPredictionView.swift in Sources */,
 				20548725715CE12C6DA82989 /* BusWaitingAttributes.swift in Sources */,
 				23787C438F63926239CDEDEF /* BusWaitingLiveActivity.swift in Sources */,
 				844D675388CF1A22A4127257 /* BusWidget.swift in Sources */,
-				B7BCBB142A72B3C04B60E293 /* BusWidgetEntry.swift in Sources */,
-				89D4BDE659A9359201DAF47C /* BusWidgetProvider.swift in Sources */,
-				A08E6705CEBD255AF8D57044 /* BusWidgetView.swift in Sources */,
-				CBF7D92BA4A1001D041AF5B9 /* LockScreenBusWidgetView.swift in Sources */,
-				BFFD3FF70CF6F21122BC8BDF /* RouteArrivalRow.swift in Sources */,
 				2A205E4D58AB6462D5ACE6F8 /* RouteCatalogModels.swift in Sources */,
 				BAEB902F66D0FA6CE8FC4EFC /* SavedStop.swift in Sources */,
 				29D5702D8FA3F3EC6692CA18 /* StationModels.swift in Sources */,
+				C279E59E3307E7E9BAE64F03 /* TransitColors.swift in Sources */,
 				3C9227FF3E4A6AFA3AA0D086 /* WidgetConfigurationData.swift in Sources */,
-				3FD2B20D00F0686377D32C34 /* WidgetConstants.swift in Sources */,
-				51C143E8FA71780346F31487 /* WidgetTimelineBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -591,7 +553,6 @@
 				A24C67E7439E86EBA964C36E /* AppTheme.swift in Sources */,
 				7D99E7DB964A98D58FE6BE38 /* ArrivalCountdownFormatter.swift in Sources */,
 				E3AFB62AAE7C2D295BE473AB /* ArrivalModels.swift in Sources */,
-				A4B4589EDDE2A1CD38CCA129 /* BusSearchView.swift in Sources */,
 				55E7A6951F567D85DE4957C3 /* BusWaitingAttributes.swift in Sources */,
 				9E78124E10045E0D61C86D6B /* BusWaitingManager.swift in Sources */,
 				C3F4A753AD37593421E6E083 /* BusWaitingView.swift in Sources */,
@@ -599,25 +560,20 @@
 				19DF3DBD6AD6A37C46D49716 /* FavoritesStore.swift in Sources */,
 				9742383F25D4F555AFBB181D /* FavoritesView.swift in Sources */,
 				9A969DA4D115CF0942429138 /* LiveWaitStore.swift in Sources */,
+				C12B0811EE4933A8DC06B340 /* NaverTransitMap.swift in Sources */,
 				403DD1857A10CD5B1F5B0CDD /* PrivacyPolicyView.swift in Sources */,
 				180C6332D14134639057C532 /* RootView.swift in Sources */,
 				27FB93C4ED828237D618D89F /* RouteCatalogModels.swift in Sources */,
-				80FC0C96B6D1090B1B8822C4 /* RouteMapSelectionView.swift in Sources */,
-				988E5AF6E1FE09530E6BEC1C /* RouteMapViewModel.swift in Sources */,
-				E750FAE0E20FDCEF2074E8B2 /* RouteSelectionView.swift in Sources */,
-				2FD7A32AA5C3A66173C0364B /* RouteSelectionViewModel.swift in Sources */,
-				5419420C78F54B07407DEA07 /* SavedConfigurationView.swift in Sources */,
 				CDF38024522D7B0FCF32E8EF /* SavedStop.swift in Sources */,
 				8674514D5CF695927D06674E /* StationBusSelectionView.swift in Sources */,
 				8B05634120A320DAAFF82EF0 /* StationBusViewModel.swift in Sources */,
 				11BDA6479C32BD0FBF9956CE /* StationFinderView.swift in Sources */,
 				918E6EDE712AB83528DECA38 /* StationFinderViewModel.swift in Sources */,
+				89FC928EC2F8C833ACBF6575 /* StationLocationService.swift in Sources */,
 				D16CDE90F36C75EF12B350ED /* StationModels.swift in Sources */,
-				FBE41E376DEB4000E43E3E6B /* StationSearchView.swift in Sources */,
-				623A59271D7B5DAF17FEC246 /* StationSearchViewModel.swift in Sources */,
+				7048587313E6ED854DE36BDE /* TransitColors.swift in Sources */,
+				3C3302EDF3015DB4FFB20DB1 /* TransitMarkerLayout.swift in Sources */,
 				DB937477722A4B2F3F0101FB /* WidgetConfigurationData.swift in Sources */,
-				5E67D74B73DB6BCB3CEDDB14 /* WidgetConstants.swift in Sources */,
-				A2B4562A81A4C68C41C63B45 /* WidgetTimelineBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -629,8 +585,7 @@
 				C679C39C3892E317A99266CF /* LiveActivityTests.swift in Sources */,
 				1E9384692EEA7C24B9D4A8B5 /* ModelsTests.swift in Sources */,
 				1C18B596B7EC3F6F409E8ED3 /* RouteMapTests.swift in Sources */,
-				0409B04F9C2BCF257D6E15C4 /* TimelineBuilderTests.swift in Sources */,
-				B21F205774B9E44E5935A4F5 /* ViewModelTests.swift in Sources */,
+				3FB5EEC0B955DE1107AF7AA7 /* TransitMarkerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -987,6 +942,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8E53712CD785C84EA2460EE1 /* XCRemoteSwiftPackageReference "SPM-NMapsMap" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/navermaps/SPM-NMapsMap";
+			requirement = {
+				kind = exactVersion;
+				version = 3.24.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		395E87FC1F31E9DC670EFE6F /* NMapsMap */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8E53712CD785C84EA2460EE1 /* XCRemoteSwiftPackageReference "SPM-NMapsMap" */;
+			productName = NMapsMap;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 92670AC1EAA8E133737D8A5B /* Project object */;
 }

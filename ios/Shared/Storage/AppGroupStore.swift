@@ -8,7 +8,6 @@ struct AppGroupStore {
         return "group.com.pangjoong.buswidget"
     }
     static let configurationKey = "widget.configuration"
-    static let cachedArrivalsKey = "widget.cachedArrivals"
 
     private let defaults: UserDefaults
     private let encoder: JSONEncoder
@@ -21,22 +20,21 @@ struct AppGroupStore {
         decoder = JSONDecoder.busWidget
     }
 
-    func loadConfiguration() -> WidgetConfigurationData? {
+    private func loadConfiguration() throws -> WidgetConfigurationData? {
         guard let data = defaults.data(forKey: Self.configurationKey) else { return nil }
-        return try? decoder.decode(WidgetConfigurationData.self, from: data)
-    }
-
-    func saveConfiguration(_ configuration: WidgetConfigurationData) throws {
-        defaults.set(try encoder.encode(configuration), forKey: Self.configurationKey)
+        return try decoder.decode(WidgetConfigurationData.self, from: data)
     }
 
     func loadFavorites() throws -> [SavedStop] {
         if let data = defaults.data(forKey: "commute.favorites") {
-            return try decoder.decode([SavedStop].self, from: data)
+            let favorites = try decoder.decode([SavedStop].self, from: data)
+            clearLegacyWidgetData()
+            return favorites
         }
         // Persist even an empty list so deleting the last favorite won't resurrect it.
-        let migrated = loadConfiguration().map { [SavedStop(configuration: $0)] } ?? []
+        let migrated = try loadConfiguration().map { [SavedStop(configuration: $0)] } ?? []
         try saveFavorites(migrated)
+        clearLegacyWidgetData()
         return migrated
     }
 
@@ -44,43 +42,12 @@ struct AppGroupStore {
         defaults.set(try encoder.encode(favorites), forKey: "commute.favorites")
     }
 
-    func clearConfiguration() {
+    private func clearLegacyWidgetData() {
+        // Only called after favorites have been decoded or successfully migrated.
         defaults.removeObject(forKey: Self.configurationKey)
-        defaults.removeObject(forKey: Self.cachedArrivalsKey)
+        defaults.removeObject(forKey: "widget.cachedArrivals")
         defaults.removeObject(forKey: "widget.selectionArrivals")
     }
-
-    func loadCachedArrivals() -> ArrivalsResponse? {
-        guard let data = defaults.data(forKey: Self.cachedArrivalsKey) else { return nil }
-        return try? decoder.decode(ArrivalsResponse.self, from: data)
-    }
-
-    func saveCachedArrivals(_ response: ArrivalsResponse) throws {
-        defaults.set(try encoder.encode(response), forKey: Self.cachedArrivalsKey)
-    }
-    private struct SelectionCache: Codable {
-        let identity: String
-        let response: ArrivalsResponse
-    }
-
-    func loadCachedArrivals(for configuration: WidgetConfigurationData) -> ArrivalsResponse? {
-        guard let data = defaults.data(forKey: "widget.selectionArrivals"),
-              let cache = try? decoder.decode(SelectionCache.self, from: data),
-              cache.identity == configuration.cacheIdentity else {
-            if configuration.version == 1, let legacy = loadCachedArrivals(),
-               legacy.station.stationId == configuration.stationId,
-               Set(legacy.arrivals.map(\.routeId)) == Set(configuration.routeIds) { return legacy }
-            return nil
-        }
-        return cache.response
-    }
-
-    func saveCachedArrivals(_ response: ArrivalsResponse, for configuration: WidgetConfigurationData) throws {
-        guard response.station.stationId == configuration.stationId else { return }
-        let cache = SelectionCache(identity: configuration.cacheIdentity, response: response)
-        defaults.set(try encoder.encode(cache), forKey: "widget.selectionArrivals")
-    }
-
 }
 
 extension JSONDecoder {

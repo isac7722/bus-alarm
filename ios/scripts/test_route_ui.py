@@ -55,7 +55,18 @@ class Handler(BaseHTTPRequestHandler):
         if path.endswith("/capabilities"):
             body = {"route_map": True}
         elif path.endswith("/stations/nearby"):
-            body = {"stations": [STATION], "truncated": False}
+            stations = [STATION]
+            if self.path.startswith(("/cluster/", "/coincident/")):
+                stations.append(
+                    {
+                        **STATION,
+                        "station_ref": "gg:fixture-neighbor",
+                        "name": "길 건너 정류장 (테스트)",
+                        "display_number": "05268",
+                        "longitude": STATION["longitude"] + (0 if self.path.startswith("/coincident/") else 0.0015),
+                    }
+                )
+            body = {"stations": stations, "truncated": False}
         elif path.endswith("/stations/resolve"):
             body = STATION
         elif path.endswith("/live-activities/availability"):

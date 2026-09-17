@@ -1,19 +1,16 @@
-# 앱 아이콘 제작
+# 앱 아이콘
 
-도구: 내장 `image_gen` (2026-09-15).
+2026-09-18 확정한 [디자인 기준](design/asset-style-guide.md)에 맞춰 새로 제작했다. 기존의 유리·무광 입체 버스 아이콘을 대체한다.
 
-최종 리소스: `ios/BusWidgetApp/Assets.xcassets/AppIcon.appiconset/AppIcon.png`
+- 형태: 정면 버스 평면 심볼. 넓은 창문, 짧은 행선지 패널, 두 전조등·거울·바퀴.
+- 색상 목표: 밝은 회색 `#F5F6F8` 배경, 차분한 블루 `#42658C` 심볼. 생성 이미지의 픽셀은 목표 색상과 약간 다를 수 있다.
+- 효과: 입체감·그림자·장식 배지·문자 없이 또렷한 실루엣을 사용한다.
+- 도구: 내장 `image_gen`. 새 이미지 생성 후 `sips`로 1024×1024로 리사이즈했다.
+- 최종 파일: `ios/BusWidgetApp/Assets.xcassets/AppIcon.appiconset/AppIcon.png`.
+- 형식: 1024×1024 불투명 PNG. 배경은 네 모서리까지 채우고 모서리 마스킹은 iOS가 적용한다.
 
-사용자가 제공한 유리 소재 가방 이미지에서 출발한 정면 버스입니다. 최종 수정에서는 버스 형태를 유지하면서 강한 반짝임·푸른 반사·무지개 굴절을 줄이고, 차분한 밝은 회색 배경과 부드러운 반투명 무광 유리 질감으로 정리했습니다. 시계 장식은 없습니다.
+앱 내부 기능 아이콘은 작은 크기에서 선명한 SF Symbols를 사용한다. 새 앱 아이콘과 같은 정면 버스·평면 표현을 공유하며, 앱 아이콘 이미지를 화면 안에 장식으로 반복하지 않는다.
 
-생성 결과를 1024×1024 불투명 PNG로 리사이즈하여 Xcode의 단일 iOS 아이콘 리소스로 사용합니다. 유리처럼 보이는 재질이며 파일 배경에는 알파 투명도를 사용하지 않습니다. 모서리 마스킹은 iOS가 적용합니다.
+## 생성 프롬프트
 
-## 초기 유리 버스 생성 프롬프트
-
-Use case: logo-brand. Create a replacement final iOS app icon for a Seoul bus arrival app, closely matching the supplied reference image's elegant clear-glass material, restrained nearly-white palette, subtle icy-blue edge refraction, gentle luminous studio light, and airy premium minimalism. Reference image role: material, lighting, palette, and rendering style ONLY; it shows a glass backpack. Replace its subject entirely with an unmistakable city BUS. One centered front-facing city bus, symmetrical, with a simple softly rounded rectangular body, one large panoramic windshield across the upper half, two restrained side mirrors, two tiny circular headlamps low on the front, and two short rounded tires peeking below. The entire bus is sculpted from clear thick optical glass with translucent lightly frosted volumes and clean rounded bevels. Windows are translucent pale blue-gray glass, not dark opaque navy. Subtle darker steel-blue contour reflections only where needed to make the silhouette readable; delicate cyan and extremely faint lilac glints in the glass edges, no colorful rainbow effects. Beautiful glass refractions and a very soft pale blue contact shadow beneath. The silhouette should read as a BUS rather than a backpack, bottle, or suitcase: absolutely no handle, straps, buckles, flap, luggage, or backpack elements. Large simple forms with minimal seams, no fussy realistic mechanical details. Bus occupies approximately 72% of canvas width and 74% of canvas height. Dead-center balanced composition. Full-bleed white to very pale cool-gray background. Understated editorial-quality 3D product rendering, not a toy, not cartoon, not plastic, no exaggerated metallic chrome. No clock, no secondary badge, no numbers, no text, no branding, no separate rounded-square container, no frame, no app mockup. Deliver exactly one square 1024x1024 image, fully opaque background extending to all four square edges: the GLASS SUBJECT LOOKS TRANSPARENT but the PNG itself must not have transparent pixels, since it will be an App Store icon.
-
-## 최종 수정 프롬프트
-
-이전 유리 버스 아이콘을 편집 대상으로 내장 `image_gen`에 전달했습니다.
-
-Edit the provided bus app icon. Preserve the exact front-facing bus silhouette, proportions, centered composition, size, two mirrors, two round headlamps, short wheels, windshield, and rounded corners. Make a restrained refinement, not a redesign. The user likes the glass bus but finds its brilliance visually tiring and asks for a slightly plainer, cleaner, calmer version. Reduce the intense glossy highlights and blue reflections by approximately 65%. Remove rainbow/prismatic fringes, bright cyan hotspots, chrome-like dark/shiny rim bands, and luminous bloom. Simplify the layered glass rim into soft clean edges. Change polished crystal into softly frosted translucent satin glass, preserving enough subtle transparency to still feel like glass rather than solid clay or plastic. Keep gentle milky pale-gray volumes with a very faint desaturated cool-blue tint. Use a quiet, nearly uniform light neutral-gray background around #E7E9ED instead of luminous white, with no halo. Broad diffuse studio illumination, subdued soft contact shadow. Soft highlights, moderate tonal separation to preserve legibility at app-icon size, never glaring, never heavily dark. Remove the diagonal shiny reflection streak across the windshield. No added objects, no clock, text, numbers, logo, border, or rounded-square enclosure. Maintain premium minimal 3D finish and fine antialiased contours. Output one square 1024x1024 final iOS app icon with an opaque full-bleed background and no alpha transparency.
+> Use case: logo-brand. Create a final iOS app icon for a calm, accurate, minimal Korean bus arrival utility. One precise flat vector-style front-facing city bus symbol in solid muted slate blue #42658C, centered on a completely uniform near-white light gray #F5F6F8 full-bleed square background. Bus has a clean softly rounded rectangular body, one wide white windshield cutout, one short horizontal white destination slit above it, two tiny round white headlights, two small integrated side mirrors, and two short simple wheels. Balanced symmetrical geometric construction; confidently readable at 32px. Bus symbol overall occupies about 56% of canvas width and 60% of canvas height, generous even negative space around it. Modest corner rounding, medium-bold filled silhouette, carefully balanced proportions. A polished quiet public-transit wayfinding pictogram, editorial clarity. Exactly two flat colors, no outlines around the canvas. No 3D, no volume, no shadow, no gradients, no glass, no shiny reflections, no clay, no texture, no noise, no clock, no pin, no badge, no lettering, no numbers, no logo text, no decorative illustration. No rounded-square container drawn into the image: the square background extends to all edges, iOS applies masking. Output exactly one square 1024x1024 opaque PNG app icon.

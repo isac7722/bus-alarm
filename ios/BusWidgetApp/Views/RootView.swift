@@ -1,5 +1,4 @@
 import SwiftUI
-import WidgetKit
 
 struct RootView: View {
     @EnvironmentObject private var waiting: BusWaitingManager
@@ -18,20 +17,24 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $tab) {
             FavoritesView { tab = 1 }
-                .tabItem { Label("즐겨찾기", systemImage: "star") }.tag(0)
+                .tabItem { Label("즐겨찾기", systemImage: "bookmark") }.tag(0)
             Group {
                 if available == true { StationFinderView() }
-                else if available == nil && discoveryError == nil { ProgressView("정류장 지도를 준비하는 중…") }
-                else {
-                    ContentUnavailableView {
-                        Label("정류장 찾기를 준비하고 있어요", systemImage: "map")
-                    } description: {
-                        Text(discoveryError ?? "잠시 후 다시 시도해 주세요. 저장한 즐겨찾기는 계속 이용할 수 있습니다.")
-                    } actions: {
-                        Button("다시 시도") { Task { await checkDiscovery() } }
-                    }
+                else if available == nil && discoveryError == nil {
+                    ProgressView("정류장 지도를 준비하는 중…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity).background(AppTheme.background)
                 }
-            }.tabItem { Label("정류장 찾기", systemImage: "map") }.tag(1)
+                else {
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            TransitEmptyState(title: "정류장 찾기를 준비하고 있어요", symbol: "map",
+                                message: discoveryError ?? "잠시 후 다시 시도해 주세요. 저장한 즐겨찾기는 계속 이용할 수 있습니다.")
+                            Button("다시 시도") { Task { await checkDiscovery() } }
+                                .buttonStyle(TransitButtonStyle(prominent: false))
+                        }.padding(.vertical, 24)
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity).background(AppTheme.background)
+                }
+            }.tabItem { Label("정류장 찾기", systemImage: "bus") }.tag(1)
         }
         .environmentObject(favorites)
         .tint(AppTheme.primary)
@@ -48,7 +51,8 @@ struct RootView: View {
                         Spacer(minLength: 4)
                         Image(systemName: "chevron.right")
                     }.font(.subheadline).padding(12).frame(maxWidth: .infinity, minHeight: 44)
-                }.background(.regularMaterial).accessibilityIdentifier("active-wait-banner")
+                }.foregroundStyle(AppTheme.action).background(AppTheme.selection)
+                 .accessibilityIdentifier("active-wait-banner")
             }
         }
         .sheet(isPresented: $showWaiting) { NavigationStack { ActiveCommuteView() } }
@@ -65,7 +69,6 @@ struct RootView: View {
                     await waiting.restore()
                     if available != true { await checkDiscovery() }
                 }
-                WidgetCenter.shared.reloadTimelines(ofKind: WidgetConstants.kind)
             }
         }
     }

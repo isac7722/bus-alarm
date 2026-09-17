@@ -1,11 +1,11 @@
 # BusWidget
 
-서울·경기 버스 정류소를 검색하고 선택한 노선의 최대 2대 도착 정보를 iPhone 홈 화면 위젯에 표시하는 MVP입니다. 버스 API 키는 백엔드에만 저장하며, iPhone 앱과 위젯은 정규화된 Go API만 호출합니다. 경기 정류소 검색과 GBIS 직접 조회는 선택적 경기 API 설정으로 활성화합니다. 현재 배포 대상은 iPhone이며 iPad, Mac Catalyst, Mac·Apple Vision에서의 네이티브 호환 배포는 지원 대상으로 설정하지 않습니다.
+서울·경기 버스 정류장을 지도에서 고르고, 탈 수 있는 버스를 즐겨찾기로 저장하는 iPhone 앱입니다. 선택한 버스의 도착 정보를 앱과 잠금 화면·Dynamic Island의 실시간 현황에서 확인합니다. 버스 API 키는 백엔드에만 저장하며, 앱은 정규화된 Go API를 호출합니다. 경기 정류소 검색과 GBIS 직접 조회는 선택적 경기 API 설정으로 활성화합니다. 현재 배포 대상은 iPhone이며 iPad, Mac Catalyst, Mac·Apple Vision에서의 네이티브 호환 배포는 지원 대상으로 설정하지 않습니다.
 
 ## 구성
 
 - `backend/`: Go, PostgreSQL, Redis, SQL 마이그레이션, 서울시·GBIS XML API 어댑터
-- `ios/`: SwiftUI 앱, WidgetKit extension, 공유 App Group 저장소
+- `ios/`: SwiftUI 앱, 실시간 현황용 WidgetKit extension, App Group 저장소
 - `seoul_bus_statiosn.xlsx`: 정류소/노선 카탈로그 원본
 - `docker-compose.yml`: PostgreSQL 17, Redis 7.4, migration, catalog import, API
 
@@ -76,20 +76,20 @@ DB 준비, 제외 기준, 기존 엑셀 import 재실행 시 주의점은 [백�
 
 Xcode에서 다음을 설정합니다.
 
-1. Xcode에 개발자 계정을 연결합니다. 앱과 위젯의 기본 Signing Team은 `ios/project.yml`에 `K5M43RRH97`로 설정되어 프로젝트를 재생성해도 유지됩니다. 다른 Team을 사용하려면 `ios/Config/Local.xcconfig`에 `DEVELOPMENT_TEAM = 실제_TEAM_ID`를 설정합니다. Team ID는 Apple Developer에서 확인하는 10자리 식별자이며 이메일 주소가 아닙니다.
+1. Xcode에 개발자 계정을 연결합니다. 앱과 실시간 현황 확장의 기본 Signing Team은 `ios/project.yml`에 `K5M43RRH97`로 설정되어 프로젝트를 재생성해도 유지됩니다. 다른 Team을 사용하려면 `ios/Config/Local.xcconfig`에 `DEVELOPMENT_TEAM = 실제_TEAM_ID`를 설정합니다. Team ID는 Apple Developer에서 확인하는 10자리 식별자이며 이메일 주소가 아닙니다.
 2. 두 target에 App Groups capability를 추가하고 `group.com.pangjoong.buswidget`을 활성화합니다.
-3. 앱과 위젯은 **시뮬레이터·실제 iPhone, Debug·Release/TestFlight 모두 `https://bus.pangjoong.com`**을 사용합니다.
+3. 앱과 실시간 현황 확장은 **시뮬레이터·실제 iPhone, Debug·Release/TestFlight 모두 `https://bus.pangjoong.com`**을 사용합니다.
 4. 기본 설정에는 로컬 백엔드 실행이 필요 없습니다. `make xcode`로 프로젝트를 열고 실행 기기를 선택한 뒤 실행합니다. 다른 서버를 사용하려면 `Config/Local.xcconfig.example`을 `Config/Local.xcconfig`로 복사하고 SDK·구성별 `API_BASE_URL` 예시를 수정합니다.
 
-앱 번들 ID는 `com.pangjoong.BusWidget`, 위젯은 `com.pangjoong.BusWidget.BusWidgetExtension`입니다. iOS는 임베드된 extension ID가 부모 앱 ID로 시작하도록 강제하므로 이 접두어 관계를 유지해야 합니다.
+앱 번들 ID는 `com.pangjoong.BusWidget`, 실시간 현황 확장은 `com.pangjoong.BusWidget.BusWidgetExtension`입니다. iOS는 임베드된 extension ID가 부모 앱 ID로 시작하도록 강제하므로 이 접두어 관계를 유지해야 합니다.
 
-앱 아이콘은 `ios/BusWidgetApp/Assets.xcassets/AppIcon.appiconset`에 있습니다. 개인정보처리방침은 정류소 검색 화면과 저장된 정류소 화면의 손 모양 버튼에서 열 수 있으며, 앱에 번들로 포함되어 오프라인에서도 읽을 수 있습니다.
+앱 아이콘은 `ios/BusWidgetApp/Assets.xcassets/AppIcon.appiconset`에 있습니다. 개인정보처리방침은 즐겨찾기 화면의 `더보기` 메뉴에서 열 수 있으며, 앱에 번들로 포함되어 오프라인에서도 읽을 수 있습니다.
 
 ## 개인정보 및 배포 준비
 
 개인정보처리방침 원본은 `backend/app/content/privacy.json`입니다. 백엔드의 `GET /privacy`와 앱의 방침 화면은 이 파일을 함께 사용합니다. 내용을 수정하면 서버 재배포와 앱 재빌드가 필요합니다. 운영 서버에 반영한 뒤 App Store Connect의 개인정보처리방침 URL에 `https://bus.pangjoong.com/privacy`를 입력합니다. 문의 주소는 `isac7722@gmail.com`입니다.
 
-`ios/Shared/PrivacyInfo.xcprivacy`는 앱과 위젯 번들에 각각 포함됩니다. App Group의 설정·도착 정보 공유를 위해 `UserDefaults` 사용 사유 `1C8F.1`을 선언합니다. 광고 추적은 하지 않지만, 서버의 IP 포함 접속 로그를 유지하므로 검색 기록, 제품 상호작용, 성능 및 기타 진단 데이터를 앱 기능 목적으로 선언했습니다. 원본 IP를 제거하지 않는 현재 동작을 기준으로 사용자와 연결된 데이터로 보수적으로 표시합니다. App Store Connect의 개인정보 응답은 매니페스트와 별개이므로 운영 환경을 확인한 뒤 동일하게 작성해야 하며, 현재 상태에서 단순히 '데이터를 수집하지 않음'으로 제출하지 않습니다.
+`ios/Shared/PrivacyInfo.xcprivacy`는 앱과 실시간 현황 확장 번들에 각각 포함됩니다. App Group의 설정·도착 정보 공유를 위해 `UserDefaults` 사용 사유 `1C8F.1`을 선언합니다. 광고 추적은 하지 않지만, 서버의 IP 포함 접속 로그를 유지하므로 검색 기록, 제품 상호작용, 성능 및 기타 진단 데이터를 앱 기능 목적으로 선언했습니다. 원본 IP를 제거하지 않는 현재 동작을 기준으로 사용자와 연결된 데이터로 보수적으로 표시합니다. App Store Connect의 개인정보 응답은 매니페스트와 별개이므로 운영 환경을 확인한 뒤 동일하게 작성해야 하며, 현재 상태에서 단순히 '데이터를 수집하지 않음'으로 제출하지 않습니다.
 
 현재 저장소에는 운영 프록시·호스팅 업체·로그 보관 기간 설정이 없습니다. 방침에 임의의 보관 일수를 적지 않았습니다. 정식 출시 전 실제 로그 보관·삭제 주기, 호스팅 및 이메일 처리에 따른 위탁·국외 처리 여부를 확인하고 방침을 구체화해야 합니다. `/privacy`는 데이터베이스와 Redis 조회 없이 응답하지만, 현재 서버 프로세스 시작에는 기존과 동일하게 두 서비스가 필요합니다.
 
@@ -97,9 +97,9 @@ Xcode에서 다음을 설정합니다.
 
 아이폰 전용 설정은 iPad 네이티브 지원을 제외합니다. App Store가 제공하는 iPhone 앱의 iPad 호환 실행까지 차단하는 설정은 아닙니다. App Store Connect의 Mac 및 Apple Vision 제공 여부도 출시 전에 확인합니다.
 
-앱에서 정류소를 검색하고 노선을 최대 4개 선택해 저장한 뒤 `버스 도착` 위젯을 추가합니다. 홈 화면 소형은 최대 2개, 중형은 최대 4개 노선을 표시합니다. 잠금 화면에서는 직사각형이 앞의 2개 노선을, 원형과 인라인이 첫 번째 노선을 표시하며 도착 시간은 `2분`, `곧`, `도착`처럼 간결하게 표시됩니다.
+즐겨찾기 카드에는 정류장·방향과 버스 번호 배지가 표시됩니다. `버스 기다리기`를 눌러 오늘 기다릴 버스를 선택하고 대기를 시작합니다. 카드 아래 `자주 타는 정류장 추가`로 새 조합을 저장합니다.
 
-잠금 화면 위젯은 잠금 화면을 길게 누른 뒤 `사용자화` → `잠금 화면` → 시계 아래 위젯 영역 → `버스 도착` 순서로 추가합니다. 시계 위 영역에는 인라인, 시계 아래 영역에는 원형 또는 직사각형 위젯을 배치할 수 있습니다.
+홈 화면과 잠금 화면의 고정 위젯 및 위젯 표시 설정은 제거했습니다. 대기 중 표시되는 **실시간 현황과 Dynamic Island는 유지**합니다. 기존 위젯 설정은 즐겨찾기가 없는 기존 사용자에게 최초 1회 가져온 뒤 위젯 전용 설정·캐시를 정리합니다. 기존 즐겨찾기와 진행 중 대기는 유지됩니다. 확장 타깃과 번들 ID는 실시간 현황 및 업데이트 호환성을 위해 유지합니다.
 
 ## API
 
@@ -156,7 +156,7 @@ make testflight-status       # 마지막 업로드 상태 재확인, 재업로�
 make testflight-script-test  # 자동화 로직의 오프라인 테스트
 ```
 
-앱과 위젯은 동일 버전과 운영 API 주소로 빌드됩니다. 프로젝트·원격·로컬 업로드 이력 중 가장 높은 앱 버전의 패치를 증가시키고 빌드 번호도 증가시킵니다. 업로드를 시도한 번호는 재사용하지 않습니다. Apple 처리 완료 후 프로젝트 버전을 반영하며 커밋·푸시는 자동 수행하지 않습니다.
+앱과 실시간 현황 확장은 동일 버전과 운영 API 주소로 빌드됩니다. 프로젝트·원격·로컬 업로드 이력 중 가장 높은 앱 버전의 패치를 증가시키고 빌드 번호도 증가시킵니다. 업로드를 시도한 번호는 재사용하지 않습니다. Apple 처리 완료 후 프로젝트 버전을 반영하며 커밋·푸시는 자동 수행하지 않습니다.
 
 결과와 단계별 로그는 `ios/build/testflight/<실행 시각>/`에 저장됩니다. 기본 30분 대기 후에도 처리가 끝나지 않으면 `make testflight-status`로 다시 확인하세요. 특정 기록은 `python3 ios/scripts/testflight.py status --run ios/build/testflight/실행폴더 --timeout 3600`으로 확인할 수 있습니다. 인증 정보 없이 실행 흐름만 확인하려면 `python3 ios/scripts/testflight.py --dry-run`을 사용합니다.
 
@@ -181,7 +181,7 @@ xcodebuild -project BusWidget.xcodeproj -scheme BusWidget \
   CODE_SIGNING_ALLOWED=NO test
 ```
 
-실기기에서는 App Group 공유, 앱 저장 직후 위젯 reload, 소형/중형 레이아웃, 라이트/다크 모드, 큰 글자, 네트워크 단절 시 마지막 성공 데이터와 stale 표시를 별도로 확인해야 합니다. WidgetKit 갱신 시각은 시스템 budget에 따라 달라지므로 디버거 결과만으로 운영 갱신 주기를 보장할 수 없습니다.
+실기기에서는 즐겨찾기 저장·복원, 큰 글자·다크 모드, 대기 시작·종료, 잠금 화면·Dynamic Island의 실시간 현황과 APNs 갱신을 확인해야 합니다.
 
 ## 버스 기다리기 · 실시간 현황
 
@@ -191,7 +191,7 @@ xcodebuild -project BusWidget.xcodeproj -scheme BusWidget \
 
 ### 지도에서 정류장 → 버스 선택 → 즐겨찾기
 
-지도 또는 이름·번호 검색으로 정류장을 고른 뒤, 해당 정류장의 버스를 최대 4개 선택합니다. 정류장·버스 조합을 별명과 함께 즐겨찾기에 저장하고 다음에는 바로 기다릴 수 있습니다. 기존 위젯 설정은 첫 즐겨찾기로 가져옵니다. 오늘 기다릴 버스와 위젯에 표시할 조합은 별도로 관리합니다.
+지도 또는 이름·번호 검색으로 정류장을 고른 뒤, 해당 정류장의 버스를 최대 4개 선택합니다. 정류장·버스 조합을 별명과 함께 즐겨찾기에 저장하고 다음에는 바로 기다릴 수 있습니다. 기존 위젯 설정은 첫 즐겨찾기로 가져옵니다. 오늘 기다릴 버스 선택은 저장된 즐겨찾기를 바꾸지 않습니다.
 
 탐색은 서버의 `ROUTE_MAP_ENABLED` 설정으로 노출합니다. 지도는 DB에 반영된 서울·서울 버스 경유 경기 정류장을 표시합니다. 새 지도 API가 필요하므로 실제 서빙 서버를 먼저 업데이트해 주세요.
 
@@ -200,3 +200,5 @@ xcodebuild -project BusWidget.xcodeproj -scheme BusWidget \
 - `make test-route-ui`: 합성 API로 iOS 지도 선택 UI 테스트 (macOS/Xcode)
 
 [API 계약·설정·서버 반영 절차](docs/design/route-map-api.md)
+
+네이버 지도 SDK 설정과 시뮬레이터 확인 방법은 [네이버 지도 설정](docs/naver-maps.md)을 참고하세요.

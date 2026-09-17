@@ -17,8 +17,24 @@ struct SavedStop: Codable, Identifiable, Equatable, Hashable {
         let visits = configuration.selections?.map(\.boardingId) ?? configuration.routeIds
         return ([configuration.stationId] + visits.sorted()).joined(separator: "|")
     }
+    var displayRoutes: [RouteSummary] {
+        let known = routes + (configuration.selections?.map { RouteSummary(routeId: $0.routeRef, routeName: $0.routeName) } ?? [])
+        return configuration.routeIds.compactMap { id in
+            known.first { $0.routeId == id && !$0.routeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        }
+    }
+    var hasMissingRouteNames: Bool { displayRoutes.count < configuration.routeIds.count }
+    var displayNumber: String? {
+        if let number = configuration.displayNumber, !number.isEmpty { return number }
+        return configuration.version == 1 ? configuration.stationId : nil
+    }
+    var directions: [String] {
+        (configuration.selections ?? []).reduce(into: []) { result, selection in
+            if !selection.direction.isEmpty && !result.contains(selection.direction) { result.append(selection.direction) }
+        }
+    }
     var routeDescription: String {
-        routes.isEmpty ? "저장한 버스 \(configuration.routeIds.count)개" : routes.map(\.routeName).joined(separator: " · ")
+        displayRoutes.isEmpty ? "버스 번호 확인 필요" : displayRoutes.map(\.routeName).joined(separator: " · ")
     }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }

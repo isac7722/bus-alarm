@@ -7,11 +7,11 @@ struct BusWaitingLiveActivity: Widget {
         ActivityConfiguration(for: BusWaitingAttributes.self) { context in
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Image(systemName: "bus.fill").foregroundStyle(.mint)
+                    Image(systemName: "bus.fill").foregroundStyle(Color(uiColor: TransitColors.liveAccent))
                     Text(context.attributes.stationName)
                         .font(.subheadline.weight(.semibold)).lineLimit(1)
                     Spacer(minLength: 4)
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Color(uiColor: TransitColors.liveSecondary))
                         .accessibilityLabel("대기 관리")
                 }
                 Divider().overlay(.white.opacity(0.2))
@@ -20,7 +20,7 @@ struct BusWaitingLiveActivity: Widget {
             .padding(.horizontal, 16).padding(.vertical, 12)
             // Four routes must remain inside ActivityKit's 160pt presentation.
             .dynamicTypeSize(...DynamicTypeSize.large)
-            .activityBackgroundTint(Color(red: 0.10, green: 0.14, blue: 0.16))
+            .activityBackgroundTint(Color(uiColor: TransitColors.liveBackground))
             .activitySystemActionForegroundColor(.white)
             .foregroundStyle(.white)
             .widgetURL(URL(string: "buswidget://waiting"))
@@ -28,28 +28,28 @@ struct BusWaitingLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Label("버스 기다리기", systemImage: "bus.fill")
-                        .font(.caption.weight(.semibold)).foregroundStyle(.mint)
+                        .font(.caption.weight(.semibold)).foregroundStyle(Color(uiColor: TransitColors.liveAccent))
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text("\(context.attributes.selectedRoutes.count)개 노선")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(Color(uiColor: TransitColors.liveSecondary))
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     WaitingRouteRows(attributes: context.attributes, state: context.state, isStale: context.isStale)
                         .dynamicTypeSize(...DynamicTypeSize.large)
                 }
             } compactLeading: {
-                Image(systemName: "bus.fill").foregroundStyle(.mint)
+                Image(systemName: "bus.fill").foregroundStyle(Color(uiColor: TransitColors.liveAccent))
             } compactTrailing: {
                 WaitingCountdown(state: context.state.summary(), isStale: context.isStale)
                     .font(.caption.monospacedDigit()).frame(width: 48)
             } minimal: {
                 WaitingCountdown(state: context.state.summary(), isStale: context.isStale)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .frame(width: 36).foregroundStyle(.mint)
+                    .frame(width: 36).foregroundStyle(Color(uiColor: TransitColors.liveAccent))
             }
             .widgetURL(URL(string: "buswidget://waiting"))
-            .keylineTint(.mint)
+            .keylineTint(Color(uiColor: TransitColors.liveAccent))
         }
     }
 }
@@ -70,11 +70,11 @@ private struct WaitingRouteRows: View {
                     if !isStale, Date.now.timeIntervalSince1970 - content.updatedAt <= 90,
                        content.status == "waiting", let stops = content.remainingStops {
                         Text(stops == 0 ? "정류소 근처" : "\(stops)정류장 전")
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            .font(.caption).foregroundStyle(Color(uiColor: TransitColors.liveSecondary)).lineLimit(1)
                     }
                     WaitingCountdown(state: content, isStale: isStale)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(content.isEnded ? .white : .mint)
+                        .foregroundStyle(content.isEnded ? .white : Color(uiColor: TransitColors.liveAccent))
                         .frame(width: 88, alignment: .trailing)
                 }
                 .accessibilityElement(children: .combine)

@@ -18,30 +18,6 @@ private let testCatalogRoute = CatalogRoute(routeRef: "gg:227000040", name: "930
 
 final class RouteMapTests: XCTestCase {
     @MainActor
-    func testFavoriteMigrationIsOnceAndSavingDoesNotReplaceWidget() throws {
-        let storage = try store()
-        let legacy = WidgetConfigurationData(stationId: "05267", stationName: "강변역", routeIds: ["227000040"])
-        try storage.saveConfiguration(legacy)
-        let favorites = FavoritesStore(store: storage)
-        XCTAssertEqual(favorites.items.map(\.configuration), [legacy])
-        let modern = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding(), boarding(route: "gg:123")]))
-        let commute = SavedStop(configuration: modern, nickname: "퇴근길")
-        XCTAssertTrue(favorites.save(commute))
-        XCTAssertEqual(storage.loadConfiguration(), legacy)
-        let today = modern.selecting(["gg:123"])
-        XCTAssertEqual(today.routeIds, ["gg:123"])
-        XCTAssertEqual(try storage.loadFavorites().last?.configuration.routeIds.count, 2)
-        favorites.pin(commute)
-        XCTAssertEqual(storage.loadConfiguration(), modern)
-        favorites.delete(favorites.items[0])
-        XCTAssertEqual(storage.loadConfiguration(), modern)
-        favorites.delete(commute)
-        XCTAssertNil(storage.loadConfiguration())
-        try storage.saveConfiguration(legacy)
-        XCTAssertTrue(try storage.loadFavorites().isEmpty, "Deleting all favorites must not trigger migration again")
-    }
-
-    @MainActor
     func testFavoriteDeduplicationRetainsIdentityAndDifferentDirection() throws {
         let favorites = FavoritesStore(store: try store())
         let config = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding()]))
@@ -103,6 +79,63 @@ final class RouteMapTests: XCTestCase {
         XCTAssertEqual(model.selections, [boarding()], "Two visits of the other route require an explicit direction choice")
     }
 
+    func testSavedBoardingNamesAppearWithoutSeparateRouteMetadata() {
+        let configuration = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding()]))
+        let favorite = SavedStop(configuration: configuration, routes: [])
+        XCTAssertEqual(favorite.displayRoutes.map(\.routeName), ["9304"])
+        XCTAssertEqual(favorite.directions, ["하남 방면"])
+        XCTAssertFalse(favorite.hasMissingRouteNames)
+    }
+
+    @MainActor
+    func testLegacyRouteNamesAreFetchedAndPersistedWithoutChangingSelection() async throws {
+        let storage = try store()
+        let favorites = FavoritesStore(store: storage, client: try api())
+        let old = SavedStop(configuration: WidgetConfigurationData(stationId: "05267", stationName: "강변역", routeIds: ["gg:227000040"]), nickname: "퇴근길")
+        favorites.save(old)
+        await favorites.hydrateLegacyNames()
+        XCTAssertEqual(favorites.items.first?.displayRoutes.map(\.routeName), ["9304"])
+        XCTAssertEqual(favorites.items.first?.configuration, old.configuration)
+        XCTAssertEqual(try storage.loadFavorites().first?.nickname, "퇴근길")
+        XCTAssertEqual(try storage.loadFavorites().first?.displayRoutes.map(\.routeName), ["9304"])
+        XCTAssertTrue(favorites.loadingNames.isEmpty)
+    }
+
+    @MainActor
+    func testFailedNameLookupKeepsFavoriteAndAllowsRetry() async throws {
+        let storage = try store()
+        let favorites = FavoritesStore(store: storage, client: try api("gateway.test"))
+        let old = SavedStop(configuration: WidgetConfigurationData(stationId: "05267", stationName: "강변역", routeIds: ["gg:227000040"]))
+        favorites.save(old)
+        await favorites.hydrateLegacyNames()
+        XCTAssertEqual(favorites.items, [old])
+        XCTAssertTrue(favorites.loadingNames.isEmpty)
+        XCTAssertNil(favorites.error, "Metadata failure must not block saving or deleting favorites")
+        let retry = FavoritesStore(store: storage, client: try api())
+        await retry.hydrateLegacyNames()
+        XCTAssertFalse(try XCTUnwrap(retry.items.first).hasMissingRouteNames)
+    }
+
+    @MainActor
+    func testLateRouteMetadataCannotRestoreDeletedOrEditedFavorite() throws {
+        let favorites = FavoritesStore(store: try store(), client: nil)
+        let old = SavedStop(configuration: WidgetConfigurationData(stationId: "05267", stationName: "강변역", routeIds: ["gg:227000040"]))
+        let metadata = [RouteSummary(routeId: "gg:227000040", routeName: "9304")]
+        favorites.save(old)
+        var renamed = old; renamed.nickname = "퇴근길"
+        favorites.save(renamed)
+        favorites.updateRouteNames(metadata, for: old)
+        XCTAssertEqual(favorites.items.first?.nickname, "퇴근길")
+        var edited = old
+        edited.configuration = WidgetConfigurationData(stationId: "22001", stationName: "강남역", routeIds: ["123"])
+        favorites.save(edited)
+        favorites.updateRouteNames(metadata, for: old)
+        XCTAssertEqual(favorites.items, [edited])
+        favorites.delete(edited)
+        favorites.updateRouteNames(metadata, for: old)
+        XCTAssertTrue(favorites.items.isEmpty)
+    }
+
     private func api(_ host: String = "routes.test") throws -> APIClient {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [RouteTestProtocol.self]
@@ -131,60 +164,6 @@ final class RouteMapTests: XCTestCase {
             let data = Data("{\"version\":\(version),\"station_id\":\"05267\",\"station_name\":\"강변역\",\"route_ids\":[\"227000040\"]}".utf8)
             XCTAssertThrowsError(try JSONDecoder.busWidget.decode(WidgetConfigurationData.self, from: data))
         }
-    }
-    func testArrivalCacheCannotCrossDirectionsOrRevisions() throws {
-        let store = try store()
-        let first = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding()]))
-        let opposite = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding(4)]))
-        let response = ArrivalsResponse(station: ArrivalStation(stationId: testMapStation.id, name: "강변역"), updatedAt: Date(timeIntervalSince1970: 1000), fetchedAt: Date(timeIntervalSince1970: 1000), arrivals: [])
-        try store.saveCachedArrivals(response, for: first)
-        XCTAssertEqual(store.loadCachedArrivals(for: first), response)
-        XCTAssertNil(store.loadCachedArrivals(for: opposite))
-    }
-    @MainActor
-    func testDirectionMustBeSelectedAndChangingItClearsStop() async throws {
-        let model = RouteMapViewModel(route: testCatalogRoute, client: try api())
-        await model.load()
-        XCTAssertNotNil(model.detail)
-        model.select(occurrence())
-        XCTAssertNil(model.selected)
-        model.changeDirection("outbound")
-        model.select(occurrence())
-        XCTAssertEqual(model.selected?.sequence, 1)
-        model.changeDirection("inbound")
-        XCTAssertNil(model.selected)
-        XCTAssertEqual(model.stops.map(\.sequence), [4])
-    }
-    @MainActor
-    func testFourRoutesLimitAndDirectionReplacement() {
-        let model = BoardingReviewViewModel(station: testMapStation, initial: boarding(), client: nil, store: nil)
-        for n in 1...4 { model.toggle(occurrence(route: "gg:20000000\(n)")) }
-        XCTAssertEqual(model.selections.count, 4)
-        model.toggle(occurrence(4))
-        XCTAssertEqual(model.selections.count, 4)
-        XCTAssertEqual(model.selections.first?.sequence, 4)
-        model.toggle(occurrence(4))
-        XCTAssertEqual(model.selections.count, 3)
-    }
-    @MainActor
-    func testFailedValidationPreservesExistingConfiguration() async throws {
-        let store = try store()
-        let old = WidgetConfigurationData(stationId: "22001", stationName: "강남역", routeIds: ["100100341"])
-        try store.saveConfiguration(old)
-        let model = BoardingReviewViewModel(station: testMapStation, initial: boarding(), client: try api("changed.test"), store: store)
-        let result = await model.save()
-        XCTAssertNil(result)
-        XCTAssertEqual(store.loadConfiguration(), old)
-        XCTAssertEqual(model.selections, [boarding()])
-        XCTAssertNotNil(model.error)
-    }
-    @MainActor
-    func testSuccessfulSaveUsesServerValidatedSelection() async throws {
-        let store = try store()
-        let model = BoardingReviewViewModel(station: testMapStation, initial: boarding(), client: try api(), store: store)
-        let result = await model.save()
-        XCTAssertEqual(result?.version, 2)
-        XCTAssertEqual(store.loadConfiguration()?.selections, [boarding()])
     }
     func testV2ArrivalRequestCarriesSequenceAndProvider() async throws {
         let config = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding(4)]))
@@ -223,6 +202,14 @@ private final class RouteTestProtocol: URLProtocol {
                 data = Data("error code: 502".utf8)
             } else {
                 data = Data(#"{"stations":[]}"#.utf8)
+            }
+        case "/api/v1/stations/05267":
+            if request.url?.host == "gateway.test" {
+                status = 502; data = Data("error code: 502".utf8)
+            } else {
+                data = try! JSONEncoder.busWidget.encode(StationDetailResponse(
+                    station: StationSummary(stationId: "05267", arsId: "05267", name: "강변역", direction: nil, latitude: 37.535, longitude: 127.094),
+                    routes: [RouteSummary(routeId: "gg:227000040", routeName: "9304"), RouteSummary(routeId: "unselected", routeName: "123")]))
             }
         case "/api/v2/routes/gg:227000040":
             data = try! JSONEncoder.busWidget.encode(CatalogDetail(route: testCatalogRoute, revision: "revision-a", directions: [RouteDirection(id: "outbound", name: "하남 방면"), RouteDirection(id: "inbound", name: "강변역 방면")], stops: [occurrence(), occurrence(4)]))

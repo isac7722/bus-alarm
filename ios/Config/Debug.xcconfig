@@ -1,2 +1,3 @@
 API_BASE_URL = https:/$()/bus.pangjoong.com
 #include? "Local.xcconfig"
+#include? "NaverMaps.local.xcconfig"

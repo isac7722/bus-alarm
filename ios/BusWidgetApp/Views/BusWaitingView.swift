@@ -12,9 +12,10 @@ struct BusWaitingView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Label("버스 기다리기", systemImage: "bus.fill")
-                .font(.headline)
+                .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.secondaryText)
             if let activity = waiting.activity {
-                Text(activity.attributes.stationName).font(.title3.bold())
+                Text(activity.attributes.stationName).font(.title3.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                 if let content = waiting.content {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         VStack(spacing: 12) {
@@ -45,17 +46,17 @@ struct BusWaitingView: View {
             } else if isLoading {
                 ProgressView("노선을 확인하는 중…")
             } else if let loadError {
-                Text(loadError).font(.callout).foregroundStyle(.secondary)
+                Text(loadError).font(.callout).foregroundStyle(AppTheme.secondaryText)
                 Button("다시 시도") { Task { await loadRoutes() } }
-                    .frame(minHeight: 44)
+                    .frame(minHeight: 44).foregroundStyle(AppTheme.action)
             } else if routes.isEmpty {
                 Text("설정 변경에서 기다릴 노선을 선택해 주세요.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.secondaryText)
             } else {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("탈 수 있는 버스를 모두 선택하세요.").font(.subheadline)
                     Text("최대 4개 · 현재 \(selectedRouteIds.count)개 선택")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(AppTheme.secondaryText)
                 }
                 VStack(spacing: 8) {
                     ForEach(routes) { route in
@@ -67,14 +68,14 @@ struct BusWaitingView: View {
                             HStack(spacing: 12) {
                                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                                     .font(.title3)
-                                    .foregroundStyle(selected ? AppTheme.primary : .secondary)
+                                    .foregroundStyle(selected ? AppTheme.action : AppTheme.secondaryText)
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(route.routeName)
                                         .font(.body.weight(selected ? .semibold : .regular))
-                                        .foregroundStyle(.primary)
+                                        .foregroundStyle(AppTheme.text)
                                     if let direction = configuration.selections?.first(where: { $0.routeRef == route.routeId })?.direction {
-                                        Text(direction).font(.subheadline).foregroundStyle(.secondary)
+                                        Text(direction).font(.subheadline).foregroundStyle(AppTheme.secondaryText)
                                     }
                                 }
                                 .multilineTextAlignment(.leading)
@@ -82,10 +83,10 @@ struct BusWaitingView: View {
                             }
                             .padding(12)
                             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                            .background(selected ? AppTheme.primary.opacity(0.08) : Color.clear,
+                            .background(selected ? AppTheme.selection : AppTheme.surface,
                                         in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12)
-                                .strokeBorder(selected ? AppTheme.primary : Color.secondary.opacity(0.35)))
+                                .strokeBorder(selected ? AppTheme.action : AppTheme.separator))
                             .contentShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .buttonStyle(.plain)
@@ -103,22 +104,23 @@ struct BusWaitingView: View {
                 } label: {
                     Group {
                         if waiting.isBusy { ProgressView("대기 시작 중…") }
-                        else { Label(selectedRouteIds.isEmpty ? "노선 선택 필요" : "\(selectedRouteIds.count)개 버스 기다리기", systemImage: "play.fill") }
+                        else { Text(selectedRouteIds.isEmpty ? "노선 선택 필요" : "\(selectedRouteIds.count)개 버스 기다리기") }
                     }
-                    .frame(maxWidth: .infinity, minHeight: 28)
+                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large)
+                .buttonStyle(TransitButtonStyle())
                 .disabled(waiting.isBusy || selectedRouteIds.isEmpty)
                 .accessibilityIdentifier("waiting-start")
             }
             if let message = waiting.errorMessage {
                 Label(message, systemImage: "exclamationmark.circle")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(AppTheme.secondaryText)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .foregroundStyle(AppTheme.text).tint(AppTheme.action)
+        .transitCard()
         .task(id: configuration.cacheIdentity) { await loadRoutes() }
     }
 
@@ -127,7 +129,7 @@ struct BusWaitingView: View {
             Label("잠금 화면에는 선택한 버스 모두", systemImage: "lock")
             Label("다이내믹 아일랜드에는 가장 빠른 도착 시간", systemImage: "timer")
         }
-        .font(.footnote).foregroundStyle(.secondary)
+        .font(.footnote).foregroundStyle(AppTheme.secondaryText)
     }
 
     @ViewBuilder
@@ -138,7 +140,7 @@ struct BusWaitingView: View {
                 .frame(width: countdownWidth, alignment: .trailing)
         } else {
             Text(state.message(isStale: stale, relativeTo: date))
-                .font(.callout).foregroundStyle(.secondary)
+                .font(.callout).foregroundStyle(AppTheme.secondaryText)
         }
     }
 
