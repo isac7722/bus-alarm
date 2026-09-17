@@ -1,15 +1,16 @@
 import XCTest
+import CoreLocation
 
 final class RouteMapUITests: XCTestCase {
     private let ids = ["gg:227000040", "gg:fixture-1", "gg:fixture-2", "gg:fixture-3"]
-    private func launch(large: Bool = false, fixturePath: String = "") -> XCUIApplication {
+    private func launch(large: Bool = false, fixturePath: String = "", dark: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchEnvironment["BUS_WIDGET_TEST_API_URL"] = "http://127.0.0.1:8767\(fixturePath)"
         app.launchEnvironment["BUS_WIDGET_TEST_SUITE"] = "RouteMapUITests.\(UUID().uuidString)"
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", large ? "UICTContentSizeCategoryAccessibilityXXXL" : "UICTContentSizeCategoryL"]
-        if large {
+        if large || dark {
             app.launchEnvironment["BUS_WIDGET_TEST_COLOR_SCHEME"] = "dark"
         }
         app.launch()
@@ -87,6 +88,78 @@ final class RouteMapUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["서버 응답을 처리할 수 없습니다."].exists)
         attach("station-search-empty")
     }
+    func testMyLocationRecentersAndShowsCompactRefresh() {
+        verifyMyLocation(dark: false)
+    }
+    func testMyLocationInDarkMode() {
+        verifyMyLocation(dark: true)
+    }
+    func testLocationControlAtLargestTypeAndInLandscape() {
+        let app = launch(large: true)
+        let locate = app.buttons["my-location"]
+        XCTAssertTrue(locate.waitForExistence(timeout: 10))
+        XCTAssertTrue(locate.isHittable)
+        XCTAssertGreaterThanOrEqual(locate.frame.height, 43.99)
+        XCTAssertGreaterThanOrEqual(locate.frame.minX, 0)
+        XCTAssertLessThanOrEqual(locate.frame.maxX, app.frame.maxX)
+        attach("location-largest-type-dark")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        expectation(for: NSPredicate { _, _ in
+            app.frame.width > app.frame.height && app.staticTexts["정류장 목록"].exists
+        }, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+        XCTAssertTrue(locate.isHittable)
+        XCTAssertGreaterThanOrEqual(locate.frame.minX, 0)
+        XCTAssertLessThanOrEqual(locate.frame.maxX, app.frame.maxX)
+        let previousLocation = XCUIDevice.shared.location
+        defer { XCUIDevice.shared.location = previousLocation }
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 37.56675, longitude: 126.978))
+        locate.tap()
+        expectation(for: NSPredicate { _, _ in locate.isEnabled }, evaluatedWith: nil)
+        waitForExpectations(timeout: 10)
+        XCTAssertFalse(app.staticTexts["위치를 찾지 못했어요. 지도와 목록에서 정류장을 고를 수 있어요."].exists)
+        attach("location-largest-type-landscape")
+    }
+    private func verifyMyLocation(dark: Bool) {
+        let previousLocation = XCUIDevice.shared.location
+        defer { XCUIDevice.shared.location = previousLocation }
+        let app = launch(dark: dark)
+        let locate = app.buttons["my-location"]
+        XCTAssertTrue(locate.waitForExistence(timeout: 10))
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 37.56675, longitude: 126.978))
+        locate.tap()
+        let permission = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        if permission.waitForExistence(timeout: 3) {
+            let allow = permission.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'While Using' OR label CONTAINS '앱을 사용하는 동안'")).firstMatch
+            XCTAssertTrue(allow.exists)
+            allow.tap()
+        }
+        let marker = app.images["map-user-location"]
+        XCTAssertTrue(marker.waitForExistence(timeout: 12))
+        XCTAssertTrue(locate.isEnabled)
+        let original = marker.frame
+        let refresh = app.buttons["이 지역 다시 찾기"]
+        XCTAssertTrue(refresh.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(refresh.frame.height, 43.99)
+        XCTAssertLessThan(refresh.frame.width, 220)
+        XCTAssertLessThan(refresh.frame.height, 52)
+        attach(dark ? "my-location-dark" : "my-location-light")
+        let start = app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: original.midX - 55, dy: original.midY + 45))
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 50, dy: 0)))
+        expectation(for: NSPredicate { _, _ in abs(marker.frame.midX - original.midX) > 20 }, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+        locate.tap() // Same coordinates must still trigger a fresh camera request.
+        expectation(for: NSPredicate { _, _ in
+            marker.exists && abs(marker.frame.midX - original.midX) < 2 && abs(marker.frame.midY - original.midY) < 2
+        }, evaluatedWith: nil)
+        waitForExpectations(timeout: 10)
+        refresh.tap()
+        XCTAssertTrue(app.buttons["station-row.gg:104000069"].waitForExistence(timeout: 5))
+        XCTAssertEqual(marker.frame.midX, original.midX, accuracy: 2)
+        XCTAssertEqual(marker.frame.midY, original.midY, accuracy: 2)
+    }
     func testClusterExpandsToSeparateSelectableStations() {
         let app = launch(fixturePath: "/cluster")
         zoomToScale(200, in: app)
@@ -120,6 +193,24 @@ final class RouteMapUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(hypot(first.frame.midX - second.frame.midX, first.frame.midY - second.frame.midY), 43.9)
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "map-cluster.")).firstMatch.exists)
         attach("200m-coincident-stations-spread")
+        let originalFirst = first.frame
+        let originalSecond = second.frame
+        second.tap()
+        XCTAssertTrue(app.buttons["selection-wait"].waitForExistence(timeout: 8))
+        app.buttons["닫기"].firstMatch.tap()
+        XCTAssertTrue(second.waitForExistence(timeout: 5))
+        XCTAssertEqual(first.frame.midX, originalFirst.midX, accuracy: 1, "Selecting a neighbor must not move this marker")
+        XCTAssertEqual(first.frame.midY, originalFirst.midY, accuracy: 1)
+        XCTAssertEqual(second.frame.midX, originalSecond.midX, accuracy: 1, "Selection must keep the tapped marker in place")
+        XCTAssertEqual(second.frame.midY, originalSecond.midY, accuracy: 1)
+        first.tap()
+        XCTAssertTrue(app.buttons["selection-wait"].waitForExistence(timeout: 8))
+        app.buttons["닫기"].firstMatch.tap()
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        XCTAssertEqual(first.frame.midX, originalFirst.midX, accuracy: 1)
+        XCTAssertEqual(first.frame.midY, originalFirst.midY, accuracy: 1)
+        XCTAssertEqual(second.frame.midX, originalSecond.midX, accuracy: 1)
+        XCTAssertEqual(second.frame.midY, originalSecond.midY, accuracy: 1)
         second.tap()
         XCTAssertTrue(app.buttons["selection-wait"].waitForExistence(timeout: 8))
         app.buttons["닫기"].firstMatch.tap()

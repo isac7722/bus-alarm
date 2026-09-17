@@ -35,6 +35,25 @@ struct TransitButtonStyle: ButtonStyle {
     }
 }
 
+/// A compact map overlay with a 36pt visual height and at least a 44pt touch target.
+struct TransitMapButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .frame(minHeight: 36)
+            .foregroundStyle(AppTheme.action)
+            .background(AppTheme.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(AppTheme.separator, lineWidth: 1))
+            .opacity(!enabled ? 0.45 : configuration.isPressed ? 0.7 : 1)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+    }
+}
+
 struct TransitEmptyState: View {
     let title: String
     let symbol: String

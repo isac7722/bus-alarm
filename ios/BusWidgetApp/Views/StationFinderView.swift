@@ -18,17 +18,8 @@ struct StationFinderView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack {
-                    if verticalSize == .compact {
-                        Label("정류장 목록", systemImage: "list.bullet").foregroundStyle(AppTheme.secondaryText)
-                    } else {
-                        Button(listOnly ? "지도로 보기" : "목록으로 보기", systemImage: listOnly ? "map" : "list.bullet") { listOnly.toggle() }
-                            .frame(minHeight: 44).foregroundStyle(AppTheme.action)
-                    }
-                    Spacer()
-                    Button("내 위치", systemImage: "location") { location.request() }
-                        .frame(minHeight: 44).foregroundStyle(AppTheme.action)
-                }.font(.subheadline.weight(.medium)).padding(.horizontal, 20)
+                mapControls
+                    .font(.subheadline.weight(.medium)).padding(.horizontal, 20)
                     .background(AppTheme.surface)
                 Divider().overlay(AppTheme.separator)
                 if let message = location.message { Text(message).font(.callout).padding(.horizontal) }
@@ -44,10 +35,12 @@ struct StationFinderView: View {
             .searchable(text: $model.query, prompt: "정류장 이름 또는 번호")
             .onChange(of: model.query) { _, _ in model.search() }
             .onChange(of: typeSize) { _, value in if value.isAccessibilitySize { listOnly = true } }
-            .onChange(of: location.coordinate?.latitude) { _, _ in
+            .onChange(of: location.updateID) { _, _ in
                 if let point = location.coordinate {
-                    let area = MKCoordinateRegion(center: point, span: MKCoordinateSpan(latitudeDelta: 0.015, longitudeDelta: 0.015))
-                    model.region = area; position = TransitMapCamera(region: area); model.query = ""; model.search()
+                    let area = TransitMapCamera.locationRegion(center: point)
+                    model.region = area; position = TransitMapCamera(region: area); model.query = ""
+                    if !typeSize.isAccessibilitySize { listOnly = false }
+                    model.search()
                 }
             }
             .task {
@@ -68,6 +61,44 @@ struct StationFinderView: View {
         }
     }
 
+    @ViewBuilder private var mapControls: some View {
+        if typeSize.isAccessibilitySize && verticalSize != .compact {
+            VStack(alignment: .leading, spacing: 4) {
+                mapDisplayControl
+                myLocationButton
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack {
+                mapDisplayControl
+                Spacer()
+                myLocationButton
+            }
+        }
+    }
+    @ViewBuilder private var mapDisplayControl: some View {
+        if verticalSize == .compact {
+            Label("정류장 목록", systemImage: "list.bullet").foregroundStyle(AppTheme.secondaryText)
+        } else {
+            Button { listOnly.toggle() } label: {
+                Label(listOnly ? "지도로 보기" : "목록으로 보기", systemImage: listOnly ? "map" : "list.bullet")
+                    .frame(minHeight: 44).contentShape(Rectangle())
+            }.foregroundStyle(AppTheme.action)
+        }
+    }
+    private var myLocationButton: some View {
+        Button { location.request() } label: {
+            HStack(spacing: 6) {
+                if location.isLocating { ProgressView().controlSize(.small) }
+                else { Image(systemName: "location") }
+                Text("내 위치")
+            }.frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .foregroundStyle(AppTheme.action)
+        .disabled(location.isLocating)
+        .accessibilityIdentifier("my-location")
+        .accessibilityValue(location.isLocating ? "위치 확인 중" : "")
+    }
+
     private var stationMap: some View {
         NaverTransitMap(camera: position, pins: model.stations.compactMap { station in
             guard let lat = station.latitude, let lon = station.longitude else { return nil }
@@ -76,7 +107,7 @@ struct StationFinderView: View {
                 label: "\(station.name), 정류장 \(station.displayNumber)", title: station.name,
                 enabled: !model.resolving, selected: selectedStationID == station.id,
                 action: { selectedStationID = station.id; Task { await model.select(station) } })
-        }, onMove: { region in
+        }, userLocation: location.coordinate, onMove: { region in
             model.region = region
             position.region = region
             mapMoved = true
@@ -84,7 +115,7 @@ struct StationFinderView: View {
         .overlay(alignment: .top) {
             if mapMoved {
                 Button("이 지역 다시 찾기", systemImage: "arrow.clockwise") { model.search(); mapMoved = false }
-                    .buttonStyle(TransitButtonStyle()).padding(8)
+                    .buttonStyle(TransitMapButtonStyle()).padding(.horizontal, 8).padding(.top, 4)
             }
         }
     }

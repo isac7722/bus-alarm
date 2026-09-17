@@ -102,14 +102,11 @@ enum TransitMarkerLayout {
 
     /// Keep displaced individual stops selectable, inside the map, and attached to their true anchor.
     /// Call only at camera idle; retain these offsets while the user pans or pinches.
-    static func offsets(_ points: [TransitMarkerPoint], in bounds: CGRect,
-                        protectedIDs: Set<String> = []) -> [String: CGPoint] {
+    /// Selection changes styling, never placement priority: otherwise nearby pins swap positions on tap.
+    static func offsets(_ points: [TransitMarkerPoint], in bounds: CGRect) -> [String: CGPoint] {
         var occupied: [CGPoint] = []
         var result: [String: CGPoint] = [:]
-        let ordered = points.sorted {
-            let a = protectedIDs.contains($0.id), b = protectedIDs.contains($1.id)
-            return a == b ? $0.id < $1.id : a
-        }
+        let ordered = points.sorted { $0.id < $1.id }
         for point in ordered {
             var target = point.point
             if occupied.contains(where: { hypot($0.x - target.x, $0.y - target.y) < 36 }) {
@@ -149,6 +146,65 @@ enum TransitMarkerLayout {
         let desired = max(2, scaleMeters / 100, Double(hitSize / max(8, nearest)))
         let fit = min(available.width / max(1, width), available.height / max(1, height))
         return max(1, min(desired, Double(fit)))
+    }
+}
+
+/// The location anchor stays visible while only its soft halo changes opacity.
+final class TransitUserLocationView: UIView {
+    private let halo = UIView()
+    private let dot = UIView()
+    private var pulsing = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        bounds.size = CGSize(width: 32, height: 32)
+        isUserInteractionEnabled = false
+        isAccessibilityElement = true
+        accessibilityIdentifier = "map-user-location"
+        accessibilityLabel = "내 위치"
+        accessibilityValue = "마지막 확인한 위치"
+        accessibilityTraits = .image
+        halo.frame = bounds
+        halo.layer.cornerRadius = 16
+        halo.backgroundColor = TransitColors.action
+        halo.alpha = 0.18
+        addSubview(halo)
+        dot.frame = CGRect(x: 8, y: 8, width: 16, height: 16)
+        dot.layer.cornerRadius = 8
+        dot.layer.borderWidth = 2
+        dot.backgroundColor = TransitColors.action
+        addSubview(dot)
+        updateColors()
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: TransitUserLocationView, _: UITraitCollection) in
+            view.updateColors()
+        }
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func setPulsing(_ enabled: Bool) {
+        pulsing = enabled
+        updatePulse()
+    }
+    override func didMoveToWindow() { super.didMoveToWindow(); updatePulse() }
+    override var isHidden: Bool { didSet { updatePulse() } }
+
+    private func updateColors() {
+        dot.layer.borderColor = TransitColors.surface.resolvedColor(with: traitCollection).cgColor
+    }
+    private func updatePulse() {
+        guard pulsing, window != nil, !isHidden else {
+            halo.layer.removeAnimation(forKey: "location-pulse")
+            return
+        }
+        guard halo.layer.animation(forKey: "location-pulse") == nil else { return }
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 0.12
+        pulse.toValue = 0.26
+        pulse.duration = 1.4
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        halo.layer.add(pulse, forKey: "location-pulse")
     }
 }
 

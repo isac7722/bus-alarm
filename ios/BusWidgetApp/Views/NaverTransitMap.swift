@@ -7,6 +7,10 @@ struct TransitMapCamera {
     let id = UUID()
     var region: MKCoordinateRegion
     var snapshot: NMFCameraPosition? = nil
+
+    static func locationRegion(center: CLLocationCoordinate2D) -> MKCoordinateRegion {
+        MKCoordinateRegion(center: center, latitudinalMeters: 300, longitudinalMeters: 300)
+    }
 }
 
 struct TransitMapPin {
@@ -41,12 +45,17 @@ struct NaverTransitMap: View {
     let pins: [TransitMapPin]
     var line: [CLLocationCoordinate2D] = []
     var dashed = false
+    var userLocation: CLLocationCoordinate2D? = nil
     var onMove: (MKCoordinateRegion) -> Void = { _ in }
     var onCameraChange: (NMFCameraPosition) -> Void = { _ in }
     @ObservedObject private var authentication = NaverMapAuthentication.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        NaverMapSurface(camera: camera, pins: pins, line: line, dashed: dashed, onMove: onMove, onCameraChange: onCameraChange)
+        NaverMapSurface(camera: camera, pins: pins, line: line, dashed: dashed,
+                        userLocation: userLocation, pulseLocation: !reduceMotion && scenePhase == .active,
+                        onMove: onMove, onCameraChange: onCameraChange)
             .overlay(alignment: .bottom) {
                 if authentication.failed {
                     Text("지도를 불러올 수 없습니다. 정류장 목록을 이용해 주세요.")
@@ -64,6 +73,8 @@ private struct NaverMapSurface: UIViewRepresentable {
     let pins: [TransitMapPin]
     let line: [CLLocationCoordinate2D]
     let dashed: Bool
+    let userLocation: CLLocationCoordinate2D?
+    let pulseLocation: Bool
     let onMove: (MKCoordinateRegion) -> Void
     let onCameraChange: (NMFCameraPosition) -> Void
 
@@ -71,6 +82,7 @@ private struct NaverMapSurface: UIViewRepresentable {
     func updateUIView(_ view: TransitNaverMapView, context: Context) {
         view.onMove = onMove
         view.onCameraChange = onCameraChange
+        view.setUserLocation(userLocation, pulsing: pulseLocation)
         view.setPins(pins)
         view.setLine(line, dashed: dashed)
         view.setCamera(camera)
@@ -98,6 +110,8 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
     private var lineSignature: [Double] = []
     private let directionArrow = UIImageView(image: UIImage(systemName: "arrowtriangle.up.fill"))
     private var directionSegment: [CLLocationCoordinate2D] = []
+    private var userCoordinate: CLLocationCoordinate2D?
+    private let userLocationView = TransitUserLocationView()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -113,6 +127,9 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         connectorLayer.lineWidth = 1
         // Above the SDK renderer, below our marker buttons.
         layer.addSublayer(connectorLayer)
+        userLocationView.isHidden = true
+        // A noninteractive geographic anchor, below stop buttons and map controls.
+        addSubview(userLocationView)
         let zoomControls = UIStackView()
         zoomControls.axis = .vertical
         zoomControls.spacing = 1
@@ -232,7 +249,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         let selectedIDs = Set(pins.filter(\.selected).map(\.id))
         groups = TransitMarkerLayout.groups(points, scaleMeters: scaleMeters, protectedIDs: selectedIDs)
         markerOffsets = TransitMarkerLayout.offsets(groups.map { TransitMarkerPoint(id: $0.id, point: $0.center) },
-                                                   in: visible, protectedIDs: selectedIDs)
+                                                   in: visible)
         let ids = Set(groups.map(\.id))
         for id in Array(buttons.keys) where !ids.contains(id) {
             buttons.removeValue(forKey: id)?.removeFromSuperview()
@@ -277,6 +294,20 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
     private func project(_ coordinate: CLLocationCoordinate2D) -> CGPoint {
         mapView.projection.point(from: NMGLatLng(lat: coordinate.latitude, lng: coordinate.longitude))
     }
+    func setUserLocation(_ coordinate: CLLocationCoordinate2D?, pulsing: Bool) {
+        userCoordinate = coordinate
+        userLocationView.setPulsing(pulsing)
+        positionUserLocation()
+    }
+    private func positionUserLocation() {
+        guard let coordinate = userCoordinate else {
+            userLocationView.isHidden = true
+            return
+        }
+        let point = project(coordinate)
+        userLocationView.center = mapView.convert(point, to: self)
+        userLocationView.isHidden = !mapView.bounds.contains(point)
+    }
     private func activateGroup(_ id: String) {
         guard let group = groups.first(where: { $0.id == id }) else { return }
         let members = group.members.compactMap { member in pins.first { $0.id == member.id } }
@@ -300,6 +331,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         mapView.moveCamera(update)
     }
     private func positionPins() {
+        positionUserLocation()
         directionArrow.isHidden = directionSegment.count != 2
         if directionSegment.count == 2 {
             let points = directionSegment.map { project($0) }
@@ -405,6 +437,8 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         buttons = [:]
         groups = []
         markerOffsets = [:]
+        userLocationView.setPulsing(false)
+        userCoordinate = nil
         connectorLayer.path = nil
     }
 }

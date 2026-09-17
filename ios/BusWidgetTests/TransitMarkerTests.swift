@@ -1,7 +1,86 @@
 import XCTest
+import MapKit
 @testable import BusWidgetApp
 
 final class TransitMarkerTests: XCTestCase {
+    func testLocationRegionShows150MeterRadiusAtDifferentLatitudes() {
+        for latitude in [0.0, 37.5665, 60] {
+            let center = CLLocationCoordinate2D(latitude: latitude, longitude: 126.978)
+            let region = TransitMapCamera.locationRegion(center: center)
+            let origin = CLLocation(latitude: latitude, longitude: center.longitude)
+            let north = CLLocation(latitude: latitude + region.span.latitudeDelta / 2, longitude: center.longitude)
+            let east = CLLocation(latitude: latitude, longitude: center.longitude + region.span.longitudeDelta / 2)
+            XCTAssertEqual(origin.distance(from: north), 150, accuracy: 2)
+            XCTAssertEqual(origin.distance(from: east), 150, accuracy: 2)
+        }
+    }
+
+    @MainActor
+    func testLocationPulseStopsWhenDisabledHiddenOrDetachedWithoutHidingAnchor() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let marker = TransitUserLocationView()
+        window.addSubview(marker)
+        let halo = marker.subviews[0]
+        let dot = marker.subviews[1]
+        marker.setPulsing(true)
+        XCTAssertNotNil(halo.layer.animation(forKey: "location-pulse"))
+        marker.setPulsing(false) // Reduced motion or an inactive scene.
+        XCTAssertNil(halo.layer.animation(forKey: "location-pulse"))
+        XCTAssertFalse(marker.isHidden)
+        XCTAssertEqual(dot.alpha, 1)
+        XCTAssertNil(dot.layer.animationKeys())
+        marker.setPulsing(true)
+        marker.isHidden = true
+        XCTAssertNil(halo.layer.animation(forKey: "location-pulse"))
+        marker.isHidden = false
+        XCTAssertNotNil(halo.layer.animation(forKey: "location-pulse"))
+        marker.removeFromSuperview()
+        XCTAssertNil(halo.layer.animation(forKey: "location-pulse"))
+    }
+
+    @MainActor
+    func testRepeatedLocationFixPublishesARecenterEventEvenForSameCoordinates() {
+        let manager = LocationTestManager()
+        let service = StationLocationService(manager: manager)
+        let fix = CLLocation(latitude: 37.5665, longitude: 126.978)
+        service.request()
+        service.locationManager(manager, didUpdateLocations: [fix])
+        let firstID = service.updateID
+        service.request()
+        service.locationManager(manager, didUpdateLocations: [fix])
+        XCTAssertNotEqual(service.updateID, firstID)
+        XCTAssertEqual(service.coordinate?.latitude, fix.coordinate.latitude)
+        XCTAssertEqual(service.coordinate?.longitude, fix.coordinate.longitude)
+        XCTAssertFalse(service.isLocating)
+    }
+
+    @MainActor
+    func testFailedLocationRequestClearsOldAnchorAndAllowsRetry() {
+        let manager = LocationTestManager()
+        let service = StationLocationService(manager: manager)
+        service.request()
+        service.locationManager(manager, didUpdateLocations: [CLLocation(latitude: 37.5665, longitude: 126.978)])
+        let previousID = service.updateID
+        service.request()
+        service.locationManager(manager, didFailWithError: CLError(.denied))
+        XCTAssertNil(service.coordinate)
+        XCTAssertFalse(service.isLocating)
+        XCTAssertNotNil(service.message)
+        XCTAssertEqual(service.updateID, previousID, "A failed lookup must not recenter to an old location")
+    }
+
+    @MainActor
+    func testLateLocationFailureDoesNotEraseSuccessfulFix() {
+        let manager = LocationTestManager()
+        let service = StationLocationService(manager: manager)
+        service.request()
+        service.locationManager(manager, didUpdateLocations: [CLLocation(latitude: 37.5665, longitude: 126.978)])
+        service.locationManager(manager, didFailWithError: CLError(.locationUnknown))
+        XCTAssertNotNil(service.coordinate)
+        XCTAssertNil(service.message)
+        XCTAssertFalse(service.isLocating)
+    }
+
     func testZoomThresholdsHaveHysteresisAndPermitLargeJumps() {
         XCTAssertEqual(TransitMarkerDetail.overview.updated(zoom: 14.6), .overview)
         XCTAssertEqual(TransitMarkerDetail.overview.updated(zoom: 14.8), .neighborhood)
@@ -67,9 +146,9 @@ final class TransitMarkerTests: XCTestCase {
     func testCoincidentStopsSpreadInsideMapWithoutLosingTheirAnchors() {
         let points = (0..<8).map { TransitMarkerPoint(id: String($0), point: CGPoint(x: 25, y: 25)) }
         let bounds = CGRect(x: 24, y: 24, width: 280, height: 240)
-        let offsets = TransitMarkerLayout.offsets(points, in: bounds, protectedIDs: ["3"])
-        XCTAssertEqual(offsets["3"], .zero)
-        XCTAssertEqual(offsets, TransitMarkerLayout.offsets(points.reversed(), in: bounds, protectedIDs: ["3"]))
+        let offsets = TransitMarkerLayout.offsets(points, in: bounds)
+        XCTAssertEqual(offsets["0"], .zero)
+        XCTAssertEqual(offsets, TransitMarkerLayout.offsets(points.reversed(), in: bounds))
         let displayed = points.map { CGPoint(x: $0.point.x + offsets[$0.id]!.x, y: $0.point.y + offsets[$0.id]!.y) }
         XCTAssertTrue(displayed.allSatisfy { bounds.contains($0) })
         for i in displayed.indices {
@@ -78,6 +157,22 @@ final class TransitMarkerTests: XCTestCase {
             }
         }
         XCTAssertTrue(points.allSatisfy { $0.point == CGPoint(x: 25, y: 25) })
+    }
+
+    func testSelectingNearbyStopsDoesNotChangeIndividualMarkerPositions() {
+        let points = [TransitMarkerPoint(id: "a", point: CGPoint(x: 100, y: 100)),
+                      TransitMarkerPoint(id: "b", point: CGPoint(x: 105, y: 100)),
+                      TransitMarkerPoint(id: "c", point: CGPoint(x: 110, y: 102))]
+        let bounds = CGRect(x: 24, y: 24, width: 280, height: 240)
+        let original = TransitMarkerLayout.offsets(points, in: bounds)
+        XCTAssertNotEqual(original["b"], .zero)
+        for selected in ["b", "c", "a", "b"] {
+            // Grouping puts the selected stop first; layout must keep the original positions.
+            let groups = TransitMarkerLayout.groups(points, scaleMeters: 200, protectedIDs: [selected])
+            let offsets = TransitMarkerLayout.offsets(groups.map { TransitMarkerPoint(id: $0.id, point: $0.center) },
+                                                      in: bounds)
+            XCTAssertEqual(offsets, original)
+        }
     }
 
     func testClusterExpansionSeparatesStopsAndFitsAvailableMapArea() {
@@ -109,4 +204,9 @@ final class TransitMarkerTests: XCTestCase {
         XCTAssertEqual(TransitMarkerDetail.street.diameter(selected: false, clustered: false), 32)
         XCTAssertEqual(TransitMarkerDetail.overview.diameter(selected: true, clustered: true), 36)
     }
+}
+
+private final class LocationTestManager: CLLocationManager {
+    override var authorizationStatus: CLAuthorizationStatus { .authorizedWhenInUse }
+    override func requestLocation() {}
 }
