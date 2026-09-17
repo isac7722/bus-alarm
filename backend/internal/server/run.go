@@ -61,12 +61,15 @@ func Run(args []string) error {
 		}
 		return nil
 	}
-	if command != "serve" && command != "migrate" && command != "import-stations" {
+	if command != "serve" && command != "migrate" && command != "import-stations" && command != "routes-check" {
 		return fmt.Errorf("unknown command")
 	}
 	config, err := LoadConfig()
 	if err != nil {
 		return err
+	}
+	if command == "routes-check" {
+		return CheckRoutes(context.Background(), config)
 	}
 	if command == "serve" {
 		if err := validateAPNsConfig(config); err != nil {
@@ -127,12 +130,13 @@ func Run(args []string) error {
 	}
 	service := &Service{repository, store, client, log}
 	handler := &Handler{Config: config, Service: service, Limiter: store, Log: log}
+	handler.Catalog = &RouteCatalog{Config: config, HTTP: httpClient, Cache: store, Repository: repository}
 	if config.APNsKeyPath != "" {
 		pusher, err := NewAPNsClient(config)
 		if err != nil {
 			return err
 		}
-		live := &LiveActivities{Redis: redisClient, Service: service, Source: client.(LiveArrivalClient), Pusher: pusher}
+		live := &LiveActivities{Redis: redisClient, Service: service, Source: client.(LiveArrivalClient), Pusher: pusher, Catalog: handler.Catalog}
 		handler.Live = live
 		workerCtx, cancelWorker := context.WithCancel(ctx)
 		workerDone := make(chan struct{})

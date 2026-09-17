@@ -16,7 +16,7 @@ struct BusWidgetProvider: TimelineProvider {
             BusWidgetEntry(
                 date: Date(),
                 configuration: store?.loadConfiguration(),
-                response: store?.loadCachedArrivals(),
+                response: store?.loadConfiguration().flatMap { store?.loadCachedArrivals(for: $0) },
                 updateFailed: false
             )
         )
@@ -37,11 +37,8 @@ struct BusWidgetProvider: TimelineProvider {
 
             do {
                 let client = try APIClient()
-                let response = try await client.arrivals(
-                    stationId: configuration.stationId,
-                    routeIds: configuration.routeIds
-                )
-                try? store.saveCachedArrivals(response)
+                let response = try await client.arrivals(configuration: configuration)
+                try? store.saveCachedArrivals(response, for: configuration)
                 let refreshDate = now.addingTimeInterval(WidgetConstants.refreshInterval)
                 let dates = WidgetTimelineBuilder.eventDates(response: response, now: now, refreshDate: refreshDate)
                 let entries = dates.map {
@@ -54,7 +51,7 @@ struct BusWidgetProvider: TimelineProvider {
                 }
                 completion(Timeline(entries: entries, policy: .after(refreshDate)))
             } catch {
-                let cached = store.loadCachedArrivals()
+                let cached = store.loadCachedArrivals(for: configuration)
                 let retryDate = now.addingTimeInterval(WidgetConstants.failureRetryInterval)
                 let dates = cached.map {
                     WidgetTimelineBuilder.eventDates(response: $0, now: now, refreshDate: retryDate)

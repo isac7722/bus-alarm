@@ -126,3 +126,14 @@ testflight-status: ## 마지막 업로드의 Apple 처리 상태를 확인합니
 
 testflight-script-test: ## TestFlight 자동화의 오프라인 테스트를 실행합니다.
 	@python3 -m unittest discover -s ios/scripts/tests -v
+
+.PHONY: routes-check routes-smoke
+routes-check: check-docker ## DB 변경 없이 서울·경기 노선 API 승인과 방향별 도착 조회를 확인합니다.
+	$(COMPOSE) run --rm --no-deps --build backend routes-check
+
+routes-smoke: ## 실행 중인 서버의 노선 검색·선택·도착 API를 검사합니다. API_URL=주소 지정 가능.
+	$(UV) run python backend/scripts/check_route_api.py --base-url "$(if $(API_URL),$(API_URL),http://127.0.0.1:8000)"
+
+.PHONY: test-route-ui
+test-route-ui: check-xcode ## 합성 API와 격리된 저장소로 지도 선택 UI를 시뮬레이터에서 검증합니다.
+	@python3 ios/scripts/test_route_ui.py --simulator "$(SIMULATOR)"

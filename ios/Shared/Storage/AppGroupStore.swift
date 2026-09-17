@@ -1,7 +1,12 @@
 import Foundation
 
 struct AppGroupStore {
-    static let suiteName = "group.com.pangjoong.buswidget"
+    static var suiteName: String {
+        #if DEBUG
+        if let suite = ProcessInfo.processInfo.environment["BUS_WIDGET_TEST_SUITE"] { return suite }
+        #endif
+        return "group.com.pangjoong.buswidget"
+    }
     static let configurationKey = "widget.configuration"
     static let cachedArrivalsKey = "widget.cachedArrivals"
 
@@ -33,6 +38,29 @@ struct AppGroupStore {
     func saveCachedArrivals(_ response: ArrivalsResponse) throws {
         defaults.set(try encoder.encode(response), forKey: Self.cachedArrivalsKey)
     }
+    private struct SelectionCache: Codable {
+        let identity: String
+        let response: ArrivalsResponse
+    }
+
+    func loadCachedArrivals(for configuration: WidgetConfigurationData) -> ArrivalsResponse? {
+        guard let data = defaults.data(forKey: "widget.selectionArrivals"),
+              let cache = try? decoder.decode(SelectionCache.self, from: data),
+              cache.identity == configuration.cacheIdentity else {
+            if configuration.version == 1, let legacy = loadCachedArrivals(),
+               legacy.station.stationId == configuration.stationId,
+               Set(legacy.arrivals.map(\.routeId)) == Set(configuration.routeIds) { return legacy }
+            return nil
+        }
+        return cache.response
+    }
+
+    func saveCachedArrivals(_ response: ArrivalsResponse, for configuration: WidgetConfigurationData) throws {
+        guard response.station.stationId == configuration.stationId else { return }
+        let cache = SelectionCache(identity: configuration.cacheIdentity, response: response)
+        defaults.set(try encoder.encode(cache), forKey: "widget.selectionArrivals")
+    }
+
 }
 
 extension JSONDecoder {

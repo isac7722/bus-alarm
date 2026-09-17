@@ -231,3 +231,9 @@ make test-backend-unit
 ## 이번 전환에서 보존한 기존 동작
 
 남은 정류장 수를 메시지에서 추출하는 정규식은 공백 제거 처리와 맞지 않는 기존 동작을 유지합니다. `staOrd`·`sectOrd`가 없으면 메시지에 정류장 수가 있어도 null이 될 수 있습니다. 또한 요청 노선 중 upstream 예측이 없는 노선은 요청 순서와 관계없이 응답 뒤쪽에 빈 예측 배열로 추가됩니다. 두 동작 모두 회귀 테스트로 고정했습니다.
+
+### 지도 기반 노선 선택
+
+`/api/v2`는 노선 검색, 방향별 정류장 선택, 경유 순번별 도착정보와 Live Activity를 제공합니다. 기존 v1과 DB 카탈로그는 유지합니다. 기본적으로 새 앱 진입은 비활성화되어 있습니다. 실제 노선 서비스 승인과 `make routes-check` 확인 후 `ROUTE_MAP_ENABLED=true`로 켜세요.
+
+운영 반영 명령과 API 계약은 [지도 선택 API 안내](../docs/design/route-map-api.md)를 참고하세요. 검증은 `make test-backend`, macOS에서는 `make test-ios`와 `make test-route-ui`로 실행합니다.

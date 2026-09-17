@@ -14,6 +14,7 @@ import (
 type Config struct {
 	AppEnv, AppName, Prefix, APIKey, APIBaseURL, DatabaseURL, RedisURL, CatalogPath string
 	MockArrivals                                                                    bool
+	RouteMapEnabled                                                                 bool
 	CacheTTL, RateWindow, RateRequests                                              int
 	HTTPTimeout                                                                     time.Duration
 	CORSOrigins                                                                     []string
@@ -44,6 +45,11 @@ func parseConfig(env map[string]string) (Config, error) {
 		return d
 	}
 	c := Config{AppEnv: get("APP_ENV", "local"), AppName: get("APP_NAME", "BusWidget API"), Prefix: get("API_V1_PREFIX", "/api/v1"), APIKey: get("SEOUL_BUS_API_KEY", ""), APIBaseURL: strings.TrimRight(get("SEOUL_BUS_API_BASE_URL", "http://ws.bus.go.kr/api/rest/stationinfo"), "/"), DatabaseURL: get("DATABASE_URL", "postgresql+asyncpg://buswidget:buswidget@localhost:5432/buswidget"), RedisURL: get("REDIS_URL", "redis://localhost:6379/0"), CatalogPath: get("STATION_CATALOG_PATH", "../seoul_bus_statiosn.xlsx")}
+	var err error
+	c.RouteMapEnabled, err = strconv.ParseBool(get("ROUTE_MAP_ENABLED", "false"))
+	if err != nil {
+		return c, startupFailure("invalid ROUTE_MAP_ENABLED")
+	}
 	c.APNsKeyPath = get("APNS_KEY_PATH", "")
 	c.GyeonggiAPIKey = strings.TrimSpace(get("GYEONGGI_BUS_API_KEY", ""))
 	c.GyeonggiAPIBaseURL = strings.TrimRight(get("GYEONGGI_BUS_API_BASE_URL", "https://apis.data.go.kr/6410000"), "/")

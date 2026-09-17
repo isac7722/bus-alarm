@@ -32,6 +32,7 @@ struct BusWaitingAttributes: ActivityAttributes {
     let routeId: String
     let routeName: String
     let expiresAt: Double
+    var boarding: BoardingSelection? = nil
 }
 
 struct LiveWaitRegistration: Decodable {

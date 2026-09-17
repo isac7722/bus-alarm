@@ -70,3 +70,10 @@ func (s *RedisStore) Check(ctx context.Context, identity string) (LimitResult, e
 	}
 	return LimitResult{count <= s.Requests, max(s.Requests-count, 0), max(ttl, 1)}, nil
 }
+
+func (s *RedisStore) SetTTL(ctx context.Context, key string, b []byte, ttl time.Duration) error {
+	if err := s.Client.Set(ctx, key, b, ttl).Err(); err != nil {
+		return cacheError()
+	}
+	return nil
+}

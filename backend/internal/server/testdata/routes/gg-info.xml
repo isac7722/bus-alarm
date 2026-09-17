@@ -1,0 +1,1 @@
+<response><msgHeader><resultCode>0</resultCode></msgHeader><msgBody><busRouteInfoItem><routeId>234000016</routeId><routeName>9304</routeName><districtCd>2</districtCd><regionName>하남</regionName><routeTypeName>직행좌석</routeTypeName><startStationName>예시기점</startStationName><endStationName>예시회차점</endStationName></busRouteInfoItem></msgBody></response>

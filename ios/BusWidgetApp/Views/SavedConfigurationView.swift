@@ -16,7 +16,7 @@ struct SavedConfigurationView: View {
                     VStack(alignment: .leading, spacing: AppTheme.spacingSmall) {
                         Text(configuration.stationName)
                             .font(.largeTitle.bold())
-                        Text("정류소 \(displayARSId(configuration.stationId))")
+                        Text("정류소 \(configuration.displayNumber ?? displayARSId(configuration.stationId))")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -31,6 +31,11 @@ struct SavedConfigurationView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 16))
 
+                    if let selections = configuration.selections {
+                        ForEach(selections) { selection in
+                            Label("\(selection.routeName) · \(selection.direction)", systemImage: "arrow.right")
+                        }
+                    }
                     BusWaitingView(configuration: configuration)
 
                     Button("설정 변경", action: onEdit)

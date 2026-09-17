@@ -2,5 +2,7 @@
 // not your Apple Account email. This applies to both app and widget targets.
 // DEVELOPMENT_TEAM = YOURTEAMID
 
-// Optional: connect to a local backend instead of https://bus.pangjoong.com.
-// API_BASE_URL = http:/$()/192.168.0.10:8000
+// Default for app and widget on all devices/configurations: https://bus.pangjoong.com.
+// Optional overrides for a specific SDK and configuration:
+// API_BASE_URL[sdk=iphonesimulator*][config=Debug] = http:/$()/localhost:8000
+// API_BASE_URL[sdk=iphoneos*][config=Debug] = http:/$()/192.168.0.10:8000

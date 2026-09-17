@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<response>
+  <msgHeader>
+    <resultCode>0</resultCode>
+  </msgHeader>
+  <msgBody>
+    <busRouteInfoItem>
+      <routeId>227000040</routeId>
+      <routeName>9304</routeName>
+      <regionName>서울,하남</regionName>
+      <routeTypeName>직행좌석형시내버스</routeTypeName>
+      <districtCd>2</districtCd>
+      <startStationName>BRT공영버스차고지(경유)</startStationName>
+      <endStationName>테크노마트앞.강변역(D)</endStationName>
+    </busRouteInfoItem>
+  </msgBody>
+</response>

@@ -59,3 +59,24 @@ func (r *PostgresRepository) Routes(ctx context.Context, id string) ([]Route, er
 	}
 	return out, rows.Err()
 }
+
+// Node lookup preserves legacy ARS IDs without assuming display numbers are unique.
+func (r *PostgresRepository) GetByNode(ctx context.Context, node string) (*Station, error) {
+	rows, err := r.Pool.Query(ctx, "SELECT station_id,node_id,name,longitude,latitude FROM stations WHERE node_id=$1 LIMIT 2", node)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var found *Station
+	for rows.Next() {
+		var s Station
+		if err := rows.Scan(&s.StationID, &s.NodeID, &s.Name, &s.Longitude, &s.Latitude); err != nil {
+			return nil, err
+		}
+		if found != nil {
+			return nil, nil
+		}
+		found = &s
+	}
+	return found, rows.Err()
+}

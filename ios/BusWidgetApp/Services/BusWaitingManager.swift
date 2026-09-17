@@ -21,7 +21,7 @@ final class BusWaitingManager: ObservableObject {
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { throw LiveWaitError.disabled }
             let api = try APIClient()
             guard try await api.liveActivitiesAvailable() else { throw LiveWaitError.unavailable }
-            let response = try await api.arrivals(stationId: configuration.stationId, routeIds: [route.routeId])
+            let response = try await api.arrivals(configuration: configuration, routeId: route.routeId)
             let now = Date()
             guard now.timeIntervalSince(response.updatedAt) <= 90,
                   let prediction = response.arrivals.first?.predictions.first(where: {
@@ -31,7 +31,8 @@ final class BusWaitingManager: ObservableObject {
             let expiresAt = now.addingTimeInterval(3600).timeIntervalSince1970
             let attributes = BusWaitingAttributes(
                 stationId: configuration.stationId, stationName: configuration.stationName,
-                routeId: route.routeId, routeName: route.routeName, expiresAt: expiresAt
+                routeId: route.routeId, routeName: route.routeName, expiresAt: expiresAt,
+                boarding: configuration.selections?.first { $0.routeRef == route.routeId }
             )
             let initial = BusWaitingAttributes.ContentState(
                 status: "waiting", arrivalAt: arrivalAt.timeIntervalSince1970,
@@ -133,6 +134,11 @@ final class BusWaitingManager: ObservableObject {
     private func register(_ wait: Activity<BusWaitingAttributes>, token: Data) async throws -> LiveWaitRegistration {
         guard let record = try LiveWaitStore.load().first(where: { $0.activityId == wait.id && !$0.needsDelete }) else {
             throw LiveWaitError.storage
+        }
+        if let boarding = wait.attributes.boarding {
+            return try await APIClient().registerBoardingWait(
+                secret: record.secret, stationRef: wait.attributes.stationId, boarding: boarding,
+                pushToken: token.map { String(format: "%02x", $0) }.joined(), environment: PushEnvironment.current)
         }
         return try await APIClient().registerLiveWait(
             secret: record.secret, stationId: wait.attributes.stationId, routeId: wait.attributes.routeId,

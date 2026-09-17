@@ -1,0 +1,6 @@
+<response><msgHeader><resultCode>0</resultCode></msgHeader><msgBody>
+<busRouteStationList><stationId>104000069</stationId><stationName>테크노마트앞.강변역D</stationName><mobileNo>5267</mobileNo><stationSeq>1</stationSeq><turnSeq>3</turnSeq><x>127.094</x><y>37.535</y></busRouteStationList>
+<busRouteStationList><stationId>234000002</stationId><stationName>중간</stationName><stationSeq>2</stationSeq><turnSeq>3</turnSeq><x>127.10</x><y>37.53</y></busRouteStationList>
+<busRouteStationList><stationId>234000003</stationId><stationName>예시회차점</stationName><stationSeq>3</stationSeq><turnSeq>3</turnSeq><x>127.12</x><y>37.52</y></busRouteStationList>
+<busRouteStationList><stationId>104000069</stationId><stationName>테크노마트앞.강변역D</stationName><mobileNo>5267</mobileNo><stationSeq>4</stationSeq><turnSeq>3</turnSeq><x>127.094</x><y>37.535</y></busRouteStationList>
+</msgBody></response>

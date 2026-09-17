@@ -22,6 +22,7 @@ type Handler struct {
 	Limiter Limiter
 	Log     *slog.Logger
 	Live    *LiveActivities
+	Catalog *RouteCatalog
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +35,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		h.Log.Info("request_completed", "method", r.Method, "path", r.URL.Path, "status_code", status, "client", r.RemoteAddr, "latency_ms", float64(time.Since(started).Microseconds()/10)/100)
 	}()
-	if strings.HasPrefix(r.URL.Path, h.Config.Prefix) && h.Limiter != nil {
+	if (strings.HasPrefix(r.URL.Path, h.Config.Prefix) || strings.HasPrefix(r.URL.Path, "/api/v2/")) && h.Limiter != nil {
 		identity, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
 			identity = r.RemoteAddr
@@ -65,6 +66,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if h.cors(w, r) {
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/v2/") {
+		status = h.serveRoutes(w, r)
 		return
 	}
 	path := r.URL.Path
@@ -244,8 +249,11 @@ func (h *Handler) cors(w http.ResponseWriter, r *http.Request) bool {
 			}
 		}
 		methods := []string{"GET"}
-		if r.URL.Path == h.Config.Prefix+"/live-activities" {
+		if r.URL.Path == h.Config.Prefix+"/live-activities" || r.URL.Path == "/api/v2/live-activities" {
 			methods = []string{"POST", "DELETE"}
+		}
+		if r.URL.Path == "/api/v2/arrivals" || r.URL.Path == "/api/v2/selections/validate" {
+			methods = []string{"POST"}
 		}
 		w.Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ", "))
 		w.Header().Set("Access-Control-Max-Age", "600")

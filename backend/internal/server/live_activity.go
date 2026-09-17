@@ -26,12 +26,14 @@ type LiveActivities struct {
 	Service *Service
 	Source  LiveArrivalClient
 	Pusher  LivePusher
+	Catalog *RouteCatalog
 }
 type liveRegistration struct {
-	StationID   string `json:"station_id"`
-	RouteID     string `json:"route_id"`
-	PushToken   string `json:"push_token"`
-	Environment string `json:"environment"`
+	StationID   string             `json:"station_id"`
+	RouteID     string             `json:"route_id"`
+	PushToken   string             `json:"push_token"`
+	Environment string             `json:"environment"`
+	Boarding    *BoardingSelection `json:"boarding,omitempty"`
 }
 
 func hexValue(s string, min, max int) bool {
@@ -87,31 +89,55 @@ func (h *Handler) serveLive(w http.ResponseWriter, r *http.Request) int {
 		var registration liveRegistration
 		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 		decoder.DisallowUnknownFields()
-		if decoder.Decode(&registration) != nil || decoder.Decode(new(any)) != io.EOF || !stationIDValid(registration.StationID) || !hexValue(registration.PushToken, 64, 512) || registration.RouteID == "" || len(registration.RouteID) > 32 || strings.ContainsAny(registration.RouteID, ", \t\n") || (registration.Environment != "sandbox" && registration.Environment != "production") {
+		if decoder.Decode(&registration) != nil || decoder.Decode(new(any)) != io.EOF || !hexValue(registration.PushToken, 64, 512) || registration.RouteID == "" || len(registration.RouteID) > 32 || strings.ContainsAny(registration.RouteID, ", \t\n") || (registration.Environment != "sandbox" && registration.Environment != "production") {
 			return h.writeError(w, invalid())
 		}
-		if _, err = h.Service.requireStation(r.Context(), registration.StationID); err != nil {
-			return h.writeError(w, err)
-		}
-		routes, routeErr := h.Service.StationRoutes(r.Context(), registration.StationID)
-		if routeErr != nil {
-			return h.writeError(w, routeErr)
-		}
-		found := false
-		for _, route := range routes {
-			if route.RouteID == registration.RouteID {
-				found = true
+		var routes []Route
+		if r.URL.Path == "/api/v2/live-activities" {
+			if h.Catalog == nil || registration.Boarding == nil {
+				return h.writeError(w, invalid())
 			}
-		}
-		if !found {
-			return h.writeError(w, appError("ROUTE_NOT_FOUND", "정류소에서 요청한 노선을 찾을 수 없습니다.", 404))
+			validated, e := h.Catalog.Validate(r.Context(), SelectionRequest{registration.StationID, []BoardingSelection{*registration.Boarding}})
+			if e != nil {
+				return h.writeError(w, e)
+			}
+			if registration.RouteID != validated.Selections[0].RouteRef {
+				return h.writeError(w, invalid())
+			}
+			registration.Boarding = &validated.Selections[0]
+		} else {
+			if !stationIDValid(registration.StationID) || registration.Boarding != nil {
+				return h.writeError(w, invalid())
+			}
+			if _, err = h.Service.requireStation(r.Context(), registration.StationID); err != nil {
+				return h.writeError(w, err)
+			}
+			var routeErr error
+			routes, routeErr = h.Service.StationRoutes(r.Context(), registration.StationID)
+			if routeErr != nil {
+				return h.writeError(w, routeErr)
+			}
+			found := false
+			for _, route := range routes {
+				if route.RouteID == registration.RouteID {
+					found = true
+				}
+			}
+			if !found {
+				return h.writeError(w, appError("ROUTE_NOT_FOUND", "정류소에서 요청한 노선을 찾을 수 없습니다.", 404))
+			}
+
 		}
 		var initial LiveSnapshot
 		if exists, redisErr := h.Live.Redis.Exists(r.Context(), key).Result(); redisErr != nil {
 			return h.writeError(w, cacheError())
 		} else if exists == 0 {
 			fetchCtx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
-			initial, err = h.Live.Source.FetchLive(fetchCtx, registration.StationID, routes)
+			if registration.Boarding != nil {
+				initial, err = h.Catalog.BoardingLive(fetchCtx, *registration.Boarding)
+			} else {
+				initial, err = h.Live.Source.FetchLive(fetchCtx, registration.StationID, routes)
+			}
 			cancel()
 			if err != nil {
 				return h.writeError(w, upstreamError("버스 도착 정보를 확인하지 못했습니다. 다시 시도해 주세요."))
@@ -122,12 +148,13 @@ func (h *Handler) serveLive(w http.ResponseWriter, r *http.Request) int {
 			if current.Ended || current.ExpiresAt != 0 && current.ExpiresAt <= now.Unix() {
 				return appError("LIVE_ACTIVITY_ENDED", "종료된 대기입니다. 새로 시작해 주세요.", 409)
 			}
-			if current.ExpiresAt != 0 && (current.StationID != registration.StationID || current.RouteID != registration.RouteID || current.Environment != registration.Environment) {
+			if current.ExpiresAt != 0 && (current.StationID != registration.StationID || current.RouteID != registration.RouteID || current.Environment != registration.Environment || !sameBoarding(current.Boarding, registration.Boarding)) {
 				return invalid()
 			}
 			if current.ExpiresAt == 0 {
 				current.StationID = registration.StationID
 				current.RouteID = registration.RouteID
+				current.Boarding = registration.Boarding
 				current.Environment = registration.Environment
 				current.ExpiresAt = now.Add(liveLifetime).Unix()
 				current.Content = LiveContent{Status: "waiting", UpdatedAt: float64(now.Unix())}
@@ -252,16 +279,29 @@ func (l *LiveActivities) process(ctx context.Context, key string, snapshots map[
 	}
 	now := time.Now()
 	if !session.Ended {
-		snapshot, ok := snapshots[session.StationID]
+		snapshotKey := session.StationID
+		if session.Boarding != nil {
+			snapshotKey = session.Boarding.BoardingID + ":" + session.Boarding.RouteRevision
+		}
+		snapshot, ok := snapshots[snapshotKey]
 		if !ok {
 			// Separate from the worker lease: one stalled upstream must not exhaust it.
 			fetchCtx, stop := context.WithTimeout(ctx, 8*time.Second)
-			routes, routeErr := l.Service.StationRoutes(fetchCtx, session.StationID)
-			if routeErr == nil {
-				snapshot, _ = l.Source.FetchLive(fetchCtx, session.StationID, routes)
+			if session.Boarding != nil {
+				if l.Catalog != nil {
+					valid, e := l.Catalog.Validate(fetchCtx, SelectionRequest{session.StationID, []BoardingSelection{*session.Boarding}})
+					if e == nil {
+						snapshot, _ = l.Catalog.BoardingLive(fetchCtx, valid.Selections[0])
+					}
+				}
+			} else {
+				routes, routeErr := l.Service.StationRoutes(fetchCtx, session.StationID)
+				if routeErr == nil {
+					snapshot, _ = l.Source.FetchLive(fetchCtx, session.StationID, routes)
+				}
 			}
 			stop()
-			snapshots[session.StationID] = snapshot
+			snapshots[snapshotKey] = snapshot
 		}
 		session.advance(snapshot, now)
 	}
@@ -288,4 +328,11 @@ func validateAPNsConfig(c Config) error {
 		return startupFailure("set APNS_KEY_PATH, APNS_KEY_ID, APNS_TEAM_ID and APNS_BUNDLE_ID together; Docker deployments need docker-compose.apns.yml")
 	}
 	return nil
+}
+
+func sameBoarding(a, b *BoardingSelection) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.BoardingID == b.BoardingID && a.RouteRevision == b.RouteRevision
 }

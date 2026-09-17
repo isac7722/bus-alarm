@@ -65,13 +65,18 @@ struct BusWaitingView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 16))
-        .task(id: configuration.stationId + configuration.routeIds.joined(separator: ",")) { await loadRoutes() }
+        .task(id: configuration.cacheIdentity) { await loadRoutes() }
     }
 
     private func loadRoutes() async {
         isLoading = true
         loadError = nil
         defer { isLoading = false }
+        if let selections = configuration.selections, configuration.version == 2 {
+            routes = selections.map { RouteSummary(routeId: $0.routeRef, routeName: "\($0.routeName) · \($0.direction)") }
+            selectedRouteId = routes.first?.routeId ?? ""
+            return
+        }
         do {
             let response = try await APIClient().stationDetail(stationId: configuration.stationId)
             routes = response.routes.filter { configuration.routeIds.contains($0.routeId) }

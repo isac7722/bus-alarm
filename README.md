@@ -78,8 +78,8 @@ Xcode에서 다음을 설정합니다.
 
 1. Xcode에 개발자 계정을 연결합니다. 앱과 위젯의 기본 Signing Team은 `ios/project.yml`에 `K5M43RRH97`로 설정되어 프로젝트를 재생성해도 유지됩니다. 다른 Team을 사용하려면 `ios/Config/Local.xcconfig`에 `DEVELOPMENT_TEAM = 실제_TEAM_ID`를 설정합니다. Team ID는 Apple Developer에서 확인하는 10자리 식별자이며 이메일 주소가 아닙니다.
 2. 두 target에 App Groups capability를 추가하고 `group.com.pangjoong.buswidget`을 활성화합니다.
-3. 앱과 위젯은 Debug와 Release 모두 기본 `https://bus.pangjoong.com`을 사용합니다.
-4. 로컬 서버에 연결하려면 `Config/Local.xcconfig.example`을 `Config/Local.xcconfig`로 복사하고 `API_BASE_URL` 설정의 주석을 해제합니다. 시뮬레이터는 `http://127.0.0.1:8000`, 실기기는 Mac의 LAN 주소(예: `http://192.168.0.10:8000`)를 사용합니다. 실기기와 Mac은 같은 네트워크에 있어야 하며, 이 설정은 Debug와 Release 모두에 적용됩니다.
+3. 앱과 위젯은 **시뮬레이터·실제 iPhone, Debug·Release/TestFlight 모두 `https://bus.pangjoong.com`**을 사용합니다.
+4. 기본 설정에는 로컬 백엔드 실행이 필요 없습니다. `make xcode`로 프로젝트를 열고 실행 기기를 선택한 뒤 실행합니다. 다른 서버를 사용하려면 `Config/Local.xcconfig.example`을 `Config/Local.xcconfig`로 복사하고 SDK·구성별 `API_BASE_URL` 예시를 수정합니다.
 
 앱 번들 ID는 `com.pangjoong.BusWidget`, 위젯은 `com.pangjoong.BusWidget.BusWidgetExtension`입니다. iOS는 임베드된 extension ID가 부모 앱 ID로 시작하도록 강제하므로 이 접두어 관계를 유지해야 합니다.
 
@@ -188,3 +188,13 @@ xcodebuild -project BusWidget.xcodeproj -scheme BusWidget \
 저장한 노선 중 하나를 선택해 잠금 화면과 다이내믹 아일랜드에서 도착 상황을 확인할 수 있습니다. 앱에서 **버스 기다리기**로 시작하고 **대기 종료**로 중지합니다.
 
 잠금 중 갱신에는 별도의 Apple Developer **APNs 키**와 서버 설정이 필요합니다. TestFlight 업로드용 App Store Connect 키로는 대체할 수 없습니다. [APNs 설정·Docker 실행·실기기 확인 방법](docs/live-activities.md)을 참고하세요.
+
+### 버스 번호 → 지도에서 정류장 선택
+
+신규 지도 선택 흐름은 서버의 `ROUTE_MAP_ENABLED` 설정으로 노출합니다. 기존 정류장 검색과 위젯 설정은 유지하며, 새 설정은 운행 방향·경유 순번을 위젯과 실시간 현황까지 전달합니다.
+
+- `make routes-check`: 서울·경기 노선 서비스와 방향별 도착 API 연결 진단
+- `make routes-smoke`: 실행 중인 서버의 검색·선택·도착 조회 확인
+- `make test-route-ui`: 합성 API로 iOS 지도 선택 UI 테스트 (macOS/Xcode)
+
+[API 계약·설정·서버 반영 절차](docs/design/route-map-api.md)

@@ -76,17 +76,18 @@ func (m *MockClient) FetchLive(_ context.Context, _ string, routes []Route) (Liv
 }
 
 type LiveSession struct {
-	StationID     string      `json:"station_id"`
-	RouteID       string      `json:"route_id"`
-	PushToken     string      `json:"push_token"`
-	Environment   string      `json:"environment"`
-	ExpiresAt     int64       `json:"expires_at"`
-	NextPushAt    int64       `json:"next_push_at"`
-	VehicleID     string      `json:"vehicle_id"`
-	LastSeenAt    int64       `json:"last_seen_at"`
-	LastArrivalAt int64       `json:"last_arrival_at"`
-	Content       LiveContent `json:"content"`
-	Ended         bool        `json:"ended"`
+	Boarding      *BoardingSelection `json:"boarding,omitempty"`
+	StationID     string             `json:"station_id"`
+	RouteID       string             `json:"route_id"`
+	PushToken     string             `json:"push_token"`
+	Environment   string             `json:"environment"`
+	ExpiresAt     int64              `json:"expires_at"`
+	NextPushAt    int64              `json:"next_push_at"`
+	VehicleID     string             `json:"vehicle_id"`
+	LastSeenAt    int64              `json:"last_seen_at"`
+	LastArrivalAt int64              `json:"last_arrival_at"`
+	Content       LiveContent        `json:"content"`
+	Ended         bool               `json:"ended"`
 }
 
 func (s *LiveSession) advance(snapshot LiveSnapshot, now time.Time) {
