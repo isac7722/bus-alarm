@@ -21,6 +21,9 @@ def main():
     base = args.base_url
     try:
         capabilities = request(base, "/api/v2/capabilities")
+        nearby = request(base, "/api/v2/stations/nearby?south=37.53&west=127.09&north=37.54&east=127.10")
+        if not isinstance(nearby.get("stations"), list) or not isinstance(nearby.get("truncated"), bool):
+            raise ValueError("지도 정류장 응답을 확인하지 못했습니다.")
         result = request(base, "/api/v2/routes/search?q=9304")
         route = next(r for r in result["routes"] if r["route_ref"].startswith("gg:") and r["name"].startswith("9304"))
         detail = request(base, "/api/v2/routes/" + route["route_ref"])
@@ -47,7 +50,12 @@ def main():
             request(base, "/api/v2/arrivals", body)
         print(
             json.dumps(
-                {"success": True, "discovery_enabled": capabilities["route_map"], "verified_boardings": len(stops)},
+                {
+                    "success": True,
+                    "discovery_enabled": capabilities["route_map"],
+                    "map_station_count": len(nearby["stations"]),
+                    "verified_boardings": len(stops),
+                },
                 ensure_ascii=False,
             )
         )

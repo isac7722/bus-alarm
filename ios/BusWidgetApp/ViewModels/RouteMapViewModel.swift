@@ -152,8 +152,10 @@ final class StationLocationService: NSObject, ObservableObject, @preconcurrency 
     @Published private(set) var coordinate: CLLocationCoordinate2D?
     @Published private(set) var message: String?
     private let manager = CLLocationManager()
+    private var requested = false
     override init() { super.init(); manager.delegate = self; manager.desiredAccuracy = kCLLocationAccuracyHundredMeters }
     func request() {
+        requested = true
         message = nil
         switch manager.authorizationStatus {
         case .notDetermined: manager.requestWhenInUseAuthorization()
@@ -162,6 +164,7 @@ final class StationLocationService: NSObject, ObservableObject, @preconcurrency 
         }
     }
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard requested else { return }
         if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways { manager.requestLocation() }
     }
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {

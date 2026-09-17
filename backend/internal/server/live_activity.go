@@ -28,7 +28,13 @@ type LiveActivities struct {
 	Pusher  LivePusher
 	Catalog *RouteCatalog
 }
+type liveTarget struct {
+	RouteID  string             `json:"route_id"`
+	Boarding *BoardingSelection `json:"boarding,omitempty"`
+}
+
 type liveRegistration struct {
+	Routes      []liveTarget       `json:"routes,omitempty"`
 	StationID   string             `json:"station_id"`
 	RouteID     string             `json:"route_id"`
 	PushToken   string             `json:"push_token"`
@@ -87,11 +93,18 @@ func (h *Handler) serveLive(w http.ResponseWriter, r *http.Request) int {
 		}, &session)
 	} else {
 		var registration liveRegistration
-		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192))
 		decoder.DisallowUnknownFields()
-		if decoder.Decode(&registration) != nil || decoder.Decode(new(any)) != io.EOF || !hexValue(registration.PushToken, 64, 512) || registration.RouteID == "" || len(registration.RouteID) > 32 || strings.ContainsAny(registration.RouteID, ", \t\n") || (registration.Environment != "sandbox" && registration.Environment != "production") {
+		if decoder.Decode(&registration) != nil || decoder.Decode(new(any)) != io.EOF || !hexValue(registration.PushToken, 64, 512) || (registration.Environment != "sandbox" && registration.Environment != "production") {
 			return h.writeError(w, invalid())
 		}
+		if registration.Routes != nil {
+			return h.serveLiveGroup(w, r, key, registration)
+		}
+		if !validLiveRouteID(registration.RouteID) {
+			return h.writeError(w, invalid())
+		}
+
 		var routes []Route
 		if r.URL.Path == "/api/v2/live-activities" {
 			if h.Catalog == nil || registration.Boarding == nil {
@@ -279,31 +292,17 @@ func (l *LiveActivities) process(ctx context.Context, key string, snapshots map[
 	}
 	now := time.Now()
 	if !session.Ended {
-		snapshotKey := session.StationID
-		if session.Boarding != nil {
-			snapshotKey = session.Boarding.BoardingID + ":" + session.Boarding.RouteRevision
-		}
-		snapshot, ok := snapshots[snapshotKey]
-		if !ok {
-			// Separate from the worker lease: one stalled upstream must not exhaust it.
-			fetchCtx, stop := context.WithTimeout(ctx, 8*time.Second)
-			if session.Boarding != nil {
-				if l.Catalog != nil {
-					valid, e := l.Catalog.Validate(fetchCtx, SelectionRequest{session.StationID, []BoardingSelection{*session.Boarding}})
-					if e == nil {
-						snapshot, _ = l.Catalog.BoardingLive(fetchCtx, valid.Selections[0])
-					}
-				}
-			} else {
-				routes, routeErr := l.Service.StationRoutes(fetchCtx, session.StationID)
-				if routeErr == nil {
-					snapshot, _ = l.Source.FetchLive(fetchCtx, session.StationID, routes)
+		if len(session.Routes) > 0 {
+			for i := range session.Routes {
+				child := &session.Routes[i]
+				if !child.Ended {
+					child.advance(l.snapshot(ctx, *child, snapshots), now)
 				}
 			}
-			stop()
-			snapshots[snapshotKey] = snapshot
+			session.aggregate(time.Now())
+		} else {
+			session.advance(l.snapshot(ctx, session, snapshots), now)
 		}
-		session.advance(snapshot, now)
 	}
 	invalid, pushErr := l.Pusher.Push(ctx, session)
 	session.NextPushAt = now.Add(30 * time.Second).Unix()

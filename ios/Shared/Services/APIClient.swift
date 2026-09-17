@@ -47,6 +47,27 @@ struct APIClient: Sendable {
         return try await get(path: "/api/v1/live-activities", method: "POST", body: body, secret: secret)
     }
 
+    func registerLiveWaitGroup(
+        secret: String, stationId: String, routes: [BusWaitingAttributes.Route], pushToken: String, environment: String
+    ) async throws -> LiveWaitRegistration {
+        struct Target: Encodable {
+            let routeId: String
+            let boarding: BoardingSelection?
+        }
+        struct Registration: Encodable {
+            let stationId: String
+            let routes: [Target]
+            let pushToken: String
+            let environment: String
+        }
+        let body = try JSONEncoder.busWidget.encode(Registration(
+            stationId: stationId, routes: routes.map { Target(routeId: $0.routeId, boarding: $0.boarding) },
+            pushToken: pushToken, environment: environment
+        ))
+        let version = routes.contains { $0.boarding != nil } ? "v2" : "v1"
+        return try await get(path: "/api/\(version)/live-activities", method: "POST", body: body, secret: secret)
+    }
+
     func endLiveWait(secret: String) async throws {
         let _: LiveWaitRegistration = try await get(path: "/api/v1/live-activities", method: "DELETE", secret: secret)
     }
@@ -73,6 +94,13 @@ struct APIClient: Sendable {
         try await get(path: "/api/v2/stations/resolve", queryItems: [URLQueryItem(name: "id", value: id)])
     }
 
+    func nearbyStations(south: Double, west: Double, north: Double, east: Double) async throws -> NearbyStationsResponse {
+        try await get(path: "/api/v2/stations/nearby", queryItems: [
+            URLQueryItem(name: "south", value: String(south)), URLQueryItem(name: "west", value: String(west)),
+            URLQueryItem(name: "north", value: String(north)), URLQueryItem(name: "east", value: String(east))
+        ])
+    }
+
     func boardingOptions(stationRef: String, routeRef: String? = nil) async throws -> BoardingOptions {
         try await get(path: "/api/v2/stations/\(stationRef)/boarding-options", queryItems: [URLQueryItem(name: "route_ref", value: routeRef)])
     }
@@ -82,13 +110,14 @@ struct APIClient: Sendable {
                       body: JSONEncoder.busWidget.encode(SelectionRequest(stationRef: stationRef, selections: selections)))
     }
 
-    func arrivals(configuration: WidgetConfigurationData, routeId: String? = nil) async throws -> ArrivalsResponse {
+    func arrivals(configuration: WidgetConfigurationData, routeId: String? = nil, routeIds: [String]? = nil) async throws -> ArrivalsResponse {
+        let requestedIds = routeIds ?? routeId.map { [$0] } ?? configuration.routeIds
         if configuration.version == 2, let selections = configuration.selections {
-            let requested = routeId.map { id in selections.filter { $0.routeRef == id } } ?? selections
+            let requested = selections.filter { requestedIds.contains($0.routeRef) }
             return try await get(path: "/api/v2/arrivals", method: "POST",
                                  body: JSONEncoder.busWidget.encode(SelectionRequest(stationRef: configuration.stationId, selections: requested)))
         }
-        return try await arrivals(stationId: configuration.stationId, routeIds: routeId.map { [$0] } ?? configuration.routeIds)
+        return try await arrivals(stationId: configuration.stationId, routeIds: requestedIds)
     }
 
     func registerBoardingWait(secret: String, stationRef: String, boarding: BoardingSelection,
@@ -140,6 +169,10 @@ struct APIClient: Sendable {
         guard 200..<300 ~= httpResponse.statusCode else {
             if let envelope = try? decoder.decode(APIErrorEnvelope.self, from: data) {
                 throw APIClientError.server(code: envelope.error.code, message: envelope.error.message)
+            }
+            if httpResponse.statusCode >= 500 {
+                throw APIClientError.server(code: "HTTP_\(httpResponse.statusCode)",
+                                            message: "서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.")
             }
             throw APIClientError.invalidResponse
         }

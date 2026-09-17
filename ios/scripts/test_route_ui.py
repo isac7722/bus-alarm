@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import subprocess
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
@@ -12,8 +13,8 @@ STATION = {
     "station_ref": "gg:104000069",
     "name": "테크노마트앞.강변역 D",
     "display_number": "05267",
-    "latitude": 37.535,
-    "longitude": 127.094,
+    "latitude": 37.5665,
+    "longitude": 126.978,
 }
 ROUTE = {
     "route_ref": "gg:227000040",
@@ -34,6 +35,15 @@ SELECTION = {
     "direction": "하남 방면",
 }
 STOP = {**SELECTION, "station": STATION, "next_stop": "다음 정류장 (테스트)", "selectable": True}
+WAITING_OPTIONS = [STOP] + [
+    {
+        **STOP,
+        "boarding_id": f"gg:fixture-{index}:104000069:1",
+        "route_ref": f"gg:fixture-{index}",
+        "route_name": name,
+    }
+    for index, name in enumerate(["1113-1", "13", "32"], start=1)
+]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -44,12 +54,20 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path.endswith("/capabilities"):
             body = {"route_map": True}
+        elif path.endswith("/stations/nearby"):
+            body = {"stations": [STATION], "truncated": False}
+        elif path.endswith("/stations/resolve"):
+            body = STATION
+        elif path.endswith("/live-activities/availability"):
+            body = {"available": False}
+        elif path == "/api/v1/stations/search":
+            body = {"stations": []}
         elif path.endswith("/routes/search"):
             body = {"routes": [ROUTE], "providers": [{"provider": "gg", "available": True}]}
         elif path.endswith("/geometry"):
             body = {"coordinates": [], "source": "stops"}
         elif path.endswith("/boarding-options"):
-            body = {"station": STATION, "options": [STOP], "complete": True, "warnings": []}
+            body = {"station": STATION, "options": WAITING_OPTIONS, "complete": True, "warnings": []}
         elif path.endswith("/routes/gg:227000040"):
             body = {
                 "route": ROUTE,
@@ -66,6 +84,31 @@ class Handler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
         if self.path.split("?")[0] == "/api/v2/selections/validate":
             self.send({"station": STATION, "selections": body["selections"]})
+        elif self.path.split("?")[0] == "/api/v2/arrivals":
+            now = datetime.now(timezone.utc)
+            self.send(
+                {
+                    "station": {"station_id": STATION["station_ref"], "name": STATION["name"]},
+                    "updated_at": now.isoformat(timespec="seconds"),
+                    "fetched_at": now.isoformat(timespec="seconds"),
+                    "arrivals": [
+                        {
+                            "route_id": item["route_ref"],
+                            "route_name": item["route_name"],
+                            "predictions": [
+                                {
+                                    "order": 1,
+                                    "arrival_at": (now + timedelta(minutes=index + 3)).isoformat(timespec="seconds"),
+                                    "remaining_seconds": (index + 3) * 60,
+                                    "remaining_stops": index + 2,
+                                    "vehicle_status": "RUNNING",
+                                }
+                            ],
+                        }
+                        for index, item in enumerate(body["selections"])
+                    ],
+                }
+            )
         else:
             self.send_error(404)
 

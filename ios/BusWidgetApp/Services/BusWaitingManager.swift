@@ -11,8 +11,9 @@ final class BusWaitingManager: ObservableObject {
     private var observations: [Task<Void, Never>] = []
     private var isRestoring = false
 
-    func start(configuration: WidgetConfigurationData, route: RouteSummary) async {
-        guard !isBusy, !isRestoring, activity == nil else { return }
+    func start(configuration: WidgetConfigurationData, routes: [RouteSummary]) async {
+        guard !isBusy, !isRestoring, activity == nil, (1...4).contains(routes.count),
+              Set(routes.map(\.routeId)).count == routes.count else { return }
         isBusy = true
         errorMessage = nil
         defer { isBusy = false }
@@ -21,26 +22,41 @@ final class BusWaitingManager: ObservableObject {
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { throw LiveWaitError.disabled }
             let api = try APIClient()
             guard try await api.liveActivitiesAvailable() else { throw LiveWaitError.unavailable }
-            let response = try await api.arrivals(configuration: configuration, routeId: route.routeId)
+            let response = try await api.arrivals(configuration: configuration, routeIds: routes.map(\.routeId))
             let now = Date()
-            guard now.timeIntervalSince(response.updatedAt) <= 90,
-                  let prediction = response.arrivals.first?.predictions.first(where: {
-                      $0.order == 1 && $0.vehicleStatus == .running && ($0.arrivalAt ?? .distantPast) > now
-                  }), let arrivalAt = prediction.arrivalAt else { throw LiveWaitError.noPrediction }
+            let selected = routes.map { route in
+                BusWaitingAttributes.Route(
+                    routeId: route.routeId, routeName: route.routeName,
+                    boarding: configuration.selections?.first { $0.routeRef == route.routeId }
+                )
+            }
+            let states = selected.map { route in
+                let prediction = response.arrivals.first { $0.routeId == route.routeId }?.predictions.first {
+                    $0.order == 1 && $0.vehicleStatus == .running && ($0.arrivalAt ?? .distantPast) > now
+                }
+                let fresh = now.timeIntervalSince(response.updatedAt) <= 90 && response.updatedAt <= now.addingTimeInterval(30)
+                return BusWaitingAttributes.RouteState(routeId: route.routeId, content: .init(
+                    status: fresh && prediction != nil ? "waiting" : "unavailable",
+                    arrivalAt: fresh ? prediction?.arrivalAt?.timeIntervalSince1970 : nil,
+                    remainingStops: fresh ? prediction?.remainingStops : nil,
+                    updatedAt: response.updatedAt.timeIntervalSince1970
+                ))
+            }
+            guard let nearest = states.filter({ $0.content.arrivalAt != nil }).min(by: {
+                $0.content.arrivalAt! < $1.content.arrivalAt!
+            }) else { throw LiveWaitError.noPrediction }
             let secret = try LiveWaitStore.newSecret()
             let expiresAt = now.addingTimeInterval(3600).timeIntervalSince1970
             let attributes = BusWaitingAttributes(
                 stationId: configuration.stationId, stationName: configuration.stationName,
-                routeId: route.routeId, routeName: route.routeName, expiresAt: expiresAt,
-                boarding: configuration.selections?.first { $0.routeRef == route.routeId }
+                routeId: selected[0].routeId, routeName: selected[0].routeName, expiresAt: expiresAt,
+                routes: selected
             )
-            let initial = BusWaitingAttributes.ContentState(
-                status: "waiting", arrivalAt: arrivalAt.timeIntervalSince1970,
-                remainingStops: prediction.remainingStops, updatedAt: response.updatedAt.timeIntervalSince1970
-            )
+            var initial = nearest.content
+            initial.routes = states
             let wait = try Activity.request(
                 attributes: attributes,
-                content: ActivityContent(state: initial, staleDate: now.addingTimeInterval(90)),
+                content: ActivityContent(state: initial, staleDate: response.updatedAt.addingTimeInterval(90)),
                 pushType: .token
             )
             created = wait
@@ -134,6 +150,12 @@ final class BusWaitingManager: ObservableObject {
     private func register(_ wait: Activity<BusWaitingAttributes>, token: Data) async throws -> LiveWaitRegistration {
         guard let record = try LiveWaitStore.load().first(where: { $0.activityId == wait.id && !$0.needsDelete }) else {
             throw LiveWaitError.storage
+        }
+        if let routes = wait.attributes.routes {
+            return try await APIClient().registerLiveWaitGroup(
+                secret: record.secret, stationId: wait.attributes.stationId, routes: routes,
+                pushToken: token.map { String(format: "%02x", $0) }.joined(), environment: PushEnvironment.current
+            )
         }
         if let boarding = wait.attributes.boarding {
             return try await APIClient().registerBoardingWait(

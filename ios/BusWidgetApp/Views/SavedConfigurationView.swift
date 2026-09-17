@@ -21,6 +21,8 @@ struct SavedConfigurationView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    BusWaitingView(configuration: configuration)
+
                     VStack(alignment: .leading, spacing: AppTheme.spacingSmall) {
                         Text("위젯 노선")
                             .font(.headline)
@@ -36,10 +38,9 @@ struct SavedConfigurationView: View {
                             Label("\(selection.routeName) · \(selection.direction)", systemImage: "arrow.right")
                         }
                     }
-                    BusWaitingView(configuration: configuration)
 
-                    Button("설정 변경", action: onEdit)
-                        .buttonStyle(.borderedProminent)
+                    Button("정류장·버스 변경", action: onEdit)
+                        .buttonStyle(.bordered)
                         .controlSize(.large)
                         .frame(minHeight: 44)
 
@@ -54,6 +55,7 @@ struct SavedConfigurationView: View {
                 .frame(maxWidth: 620, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("버스 위젯")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

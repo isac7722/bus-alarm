@@ -45,6 +45,12 @@ func (h *Handler) serveRoutes(w http.ResponseWriter, r *http.Request) int {
 	var result any
 	var err error
 	switch {
+	case path == "/stations/nearby":
+		var bounds StationBounds
+		bounds, err = stationBounds(r)
+		if err == nil {
+			result, err = h.Catalog.StationsInBounds(r.Context(), bounds)
+		}
 	case path == "/routes/search":
 		result, err = h.Catalog.Search(r.Context(), lastQuery(r, "q"))
 	case strings.HasPrefix(path, "/routes/"):

@@ -1,6 +1,6 @@
 # 지도 선택 API와 적용 방법
 
-새 흐름은 `/api/v2`이며 기존 `/api/v1` 및 기존 위젯 설정을 유지한다. 위치 좌표는 지도에 제공하지만 사용자의 현재 위치를 API로 전송하지 않는다.
+새 흐름은 `/api/v2`이며 기존 `/api/v1` 및 기존 위젯 설정을 유지한다. 지도에 표시할 정류장은 화면 범위(남·서·북·동 위도/경도)로 조회한다. 내 위치로 이동하면 그 주변 범위가 서버로 전송되며, 접속 로그에 남을 수 있다. 위치 권한 없이도 지도 이동과 이름·번호 검색을 사용할 수 있다.
 
 ## 운영 적용
 
@@ -28,6 +28,7 @@
 | GET `/routes/search?q=9304` | `routes[]`: route_ref/name/region/kind/start/end. `providers[]`: provider/available/message/error_code. 일부 제공기관 실패를 별도 표시 |
 | GET `/routes/{route_ref}` | route/revision/directions[]/stops[]. stop마다 탑승 선택 필드, station, next_stop, selectable, reason |
 | GET `/routes/{route_ref}/geometry` | coordinates[{latitude,longitude}], source(`provider` 또는 `stops`). `stops`는 실제 도로 형상이 아님 |
+| GET `/stations/nearby?south=37.53&west=127.09&north=37.54&east=127.10` | `stations[]`: MapStation, `truncated`: 추가 정류장 존재 여부. 각 축 범위 최대 0.12도, 최대 200개. 범위 초과는 400 `MAP_AREA_TOO_LARGE` |
 | GET `/stations/resolve?id=05267` | 기존 정류장 ID를 MapStation으로 변환. 기존 정류장 검색 진입에 사용 |
 | GET `/stations/{station_ref}/boarding-options?route_ref=...` | station/options[]/complete/warnings[]. route_ref는 DB에 없는 정류장을 검증된 노선 상세에서 해석하기 위한 선택적 값 |
 | POST `/selections/validate` | 아래 SelectionRequest 검증 후 station/selections 반환. 서버에 사용자별 설정을 영속 저장하지 않음 |
@@ -88,3 +89,30 @@ make test-route-ui SIMULATOR="iPhone 17 Pro"
 - 실제 공개 응답의 식별 필드만 보존한 `verified-9304-*.xml` fixture로 이 사례를 재검증한다. 인증키·차량·업체 연락처는 포함하지 않는다.
 
 원격 서빙 서버 배포와 TestFlight 업로드는 별도다. 자동 검사 통과가 실제 기기의 지도 품질·위치 권한·APNs 전달 확인을 대신하지 않는다.
+
+## 정류장 중심 탐색과 즐겨찾기
+
+- 신규 사용자는 **정류장 찾기** 지도에서 시작한다. 저장한 조합이 있으면 **즐겨찾기**가 먼저 열린다.
+- 지도 핀/목록 → 정류장 번호 확인 → 버스별 방면·다음 정류장 확인 → 최대 4개 선택 → 즐겨찾기 저장 또는 기다리기. 도착예측이 없는 노선도 선택·저장할 수 있다.
+- 지도는 현재 DB의 서울 및 서울 버스가 경유하는 경기 정류장을 조회한다. 경기도 전체 정류장 수집 기능은 아니다. 동일 이름의 반대편 정류장은 node ID로 구분하고 `(경유)`·`(미정차)` 지점은 지도 탐색에서 제외한다. 이름·번호 검색은 기존 검색 API를 사용한다.
+- 즐겨찾기는 정류장·노선·방향 조합과 선택적 별명을 기기에 저장한다. 기존 위젯 설정은 최초 한 번 첫 즐겨찾기로 가져온다. 마지막 즐겨찾기를 삭제해도 다시 복원하지 않는다.
+- 오늘 기다릴 버스의 체크 해제는 저장한 조합을 바꾸지 않는다. 즐겨찾기 저장/대기 시작도 위젯을 바꾸지 않으며, 상세의 **위젯에 표시**로 별도 지정한다.
+- 활성 대기는 상단 배너로 다시 열 수 있다. 다른 조합을 시작하려면 기존 대기를 종료한다. 도착 순서로 목록을 재배치하지 않고, 선택한 버스 중 가장 가까운 도착을 표시한다. 90초 넘은 예측은 ‘갱신 필요’로 표시한다.
+- 큰 글씨·가로 화면에서는 목록을 우선 제공한다. 빈 검색 결과와 조회 오류를 구분하며 재시도할 수 있다.
+
+새 `/stations/nearby` API를 사용하므로 **앱 테스트 전에 실제 서빙 서버도 이 코드로 업데이트**해야 한다. DB 스키마 변경은 없다. 기존 정류장 데이터가 이미 반영됐다면 재가져오기는 필요 없다.
+
+```bash
+# 실제 서빙 서버: 이 변경이 포함된 코드를 받은 후
+make test-backend
+make restart APNS=1
+curl 'http://127.0.0.1:8000/api/v2/stations/nearby?south=37.53&west=127.09&north=37.54&east=127.10'
+
+# Mac: 앱은 기존처럼 https://bus.pangjoong.com 사용
+make test-ios
+make test-route-ui
+make xcode
+# Xcode에서 시뮬레이터를 선택하고 실행(⌘R)
+```
+
+지도 범위가 현재 위치 주변을 포함하고 접속 로그와 연결될 수 있어, 개인정보 매니페스트에 위치 데이터의 앱 기능 목적 처리를 선언했다. 선언 키는 [Apple 데이터 유형 문서](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacycollecteddatatypes/nsprivacycollecteddatatype)를 따른다.

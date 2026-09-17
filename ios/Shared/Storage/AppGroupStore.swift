@@ -30,6 +30,26 @@ struct AppGroupStore {
         defaults.set(try encoder.encode(configuration), forKey: Self.configurationKey)
     }
 
+    func loadFavorites() throws -> [SavedStop] {
+        if let data = defaults.data(forKey: "commute.favorites") {
+            return try decoder.decode([SavedStop].self, from: data)
+        }
+        // Persist even an empty list so deleting the last favorite won't resurrect it.
+        let migrated = loadConfiguration().map { [SavedStop(configuration: $0)] } ?? []
+        try saveFavorites(migrated)
+        return migrated
+    }
+
+    func saveFavorites(_ favorites: [SavedStop]) throws {
+        defaults.set(try encoder.encode(favorites), forKey: "commute.favorites")
+    }
+
+    func clearConfiguration() {
+        defaults.removeObject(forKey: Self.configurationKey)
+        defaults.removeObject(forKey: Self.cachedArrivalsKey)
+        defaults.removeObject(forKey: "widget.selectionArrivals")
+    }
+
     func loadCachedArrivals() -> ArrivalsResponse? {
         guard let data = defaults.data(forKey: Self.cachedArrivalsKey) else { return nil }
         return try? decoder.decode(ArrivalsResponse.self, from: data)

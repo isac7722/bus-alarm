@@ -10,11 +10,17 @@ import (
 )
 
 // Unix seconds are Doubles in Swift, not Foundation's default Date epoch.
+type LiveRouteContent struct {
+	RouteID string      `json:"routeId"`
+	Content LiveContent `json:"content"`
+}
+
 type LiveContent struct {
-	Status         string   `json:"status"`
-	ArrivalAt      *float64 `json:"arrivalAt"`
-	RemainingStops *int     `json:"remainingStops"`
-	UpdatedAt      float64  `json:"updatedAt"`
+	Routes         []LiveRouteContent `json:"routes,omitempty"`
+	Status         string             `json:"status"`
+	ArrivalAt      *float64           `json:"arrivalAt"`
+	RemainingStops *int               `json:"remainingStops"`
+	UpdatedAt      float64            `json:"updatedAt"`
 }
 
 type LiveBus struct {
@@ -76,6 +82,7 @@ func (m *MockClient) FetchLive(_ context.Context, _ string, routes []Route) (Liv
 }
 
 type LiveSession struct {
+	Routes        []LiveSession      `json:"routes,omitempty"`
 	Boarding      *BoardingSelection `json:"boarding,omitempty"`
 	StationID     string             `json:"station_id"`
 	RouteID       string             `json:"route_id"`
@@ -147,7 +154,7 @@ func (s *LiveSession) advance(snapshot LiveSnapshot, now time.Time) {
 	s.LastSeenAt = snapshot.UpdatedAt.Unix()
 	s.LastArrivalAt = p.ArrivalAt.Unix()
 	at := float64(p.ArrivalAt.Unix())
-	s.Content = LiveContent{"waiting", &at, p.RemainingStops, float64(snapshot.UpdatedAt.Unix())}
+	s.Content = LiveContent{Status: "waiting", ArrivalAt: &at, RemainingStops: p.RemainingStops, UpdatedAt: float64(snapshot.UpdatedAt.Unix())}
 	if p.RemainingSeconds != nil && *p.RemainingSeconds == 0 {
 		s.Content.Status = "arrived"
 		s.Ended = true

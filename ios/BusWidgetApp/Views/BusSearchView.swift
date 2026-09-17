@@ -27,8 +27,12 @@ struct BusSearchView: View {
                         ForEach(model.recent, id: \.self) { text in Button(text) { model.query = text } }
                         if model.recent.isEmpty { Text("예: 9304, 370, M5107").foregroundStyle(.secondary) }
                     }
-                } else if !model.loading && model.routes.isEmpty && model.stations.isEmpty && model.error == nil {
-                    ContentUnavailableView.search(text: model.query)
+                } else if !model.loading && model.routes.isEmpty && model.stations.isEmpty && model.error == nil && model.warning == nil {
+                    ContentUnavailableView(
+                        model.searchStops ? "정류장이 없습니다." : "버스 노선이 없습니다.",
+                        systemImage: "magnifyingglass",
+                        description: Text(model.searchStops ? "다른 정류장 이름이나 번호로 검색해 주세요." : "다른 버스 번호로 검색해 주세요.")
+                    )
                 }
                 if model.searchStops {
                     ForEach(model.stations) { station in
@@ -70,7 +74,7 @@ struct BusSearchView: View {
                     ToolbarItem(placement: .topBarLeading) { Button("취소") { confirmCancel = true } }
                 }
             }
-            .confirmationDialog("설정 변경을 취소할까요? 기존 위젯 설정은 유지됩니다.", isPresented: $confirmCancel, titleVisibility: .visible) {
+            .confirmationDialog("정류장·버스 변경을 취소할까요? 기존 위젯 설정은 유지됩니다.", isPresented: $confirmCancel, titleVisibility: .visible) {
                 Button("변경 취소", role: .destructive, action: onCancel)
             }
         }

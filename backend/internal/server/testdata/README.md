@@ -17,3 +17,5 @@ The privacy fixture was also updated on 2026-09-17 for the GBIS integration: it 
 `seoul_05267_routes.xml` preserves the 18 route IDs and names observed from Seoul's `getRouteByStation` with `arsId=05267` on 2026-09-17. It is reduced to the response header and route identity fields; it contains no service key. The existing Excel catalog has only four routes for this station. In particular, Gyeonggi/Hanam route `9304하남` (`227000040`) is present in this fixture and was also observed in `getStationByUid` with a live arrival. Tests use a separate synthetic arrival response containing only that route to ensure routes without predictions remain selectable.
 
 지도 선택 기능의 위치 권한·최근 검색어·경유 순번·MapKit 안내에 맞춰 privacy HTML 기대값을 갱신했다. 나머지 Python 호환성 계약은 유지한다.
+
+정류장 중심 지도·즐겨찾기 기능에 맞춰 privacy HTML의 지도 범위 전송·접속 로그·로컬 즐겨찾기 안내만 갱신했다. HTTP 상태 및 나머지 기존 계약은 유지한다.

@@ -17,6 +17,92 @@ private func occurrence(_ sequence: Int = 1, route: String = "gg:227000040") -> 
 private let testCatalogRoute = CatalogRoute(routeRef: "gg:227000040", name: "9304", region: "하남", kind: "직행좌석", start: "하남", end: "강변역")
 
 final class RouteMapTests: XCTestCase {
+    @MainActor
+    func testFavoriteMigrationIsOnceAndSavingDoesNotReplaceWidget() throws {
+        let storage = try store()
+        let legacy = WidgetConfigurationData(stationId: "05267", stationName: "강변역", routeIds: ["227000040"])
+        try storage.saveConfiguration(legacy)
+        let favorites = FavoritesStore(store: storage)
+        XCTAssertEqual(favorites.items.map(\.configuration), [legacy])
+        let modern = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding(), boarding(route: "gg:123")]))
+        let commute = SavedStop(configuration: modern, nickname: "퇴근길")
+        XCTAssertTrue(favorites.save(commute))
+        XCTAssertEqual(storage.loadConfiguration(), legacy)
+        let today = modern.selecting(["gg:123"])
+        XCTAssertEqual(today.routeIds, ["gg:123"])
+        XCTAssertEqual(try storage.loadFavorites().last?.configuration.routeIds.count, 2)
+        favorites.pin(commute)
+        XCTAssertEqual(storage.loadConfiguration(), modern)
+        favorites.delete(favorites.items[0])
+        XCTAssertEqual(storage.loadConfiguration(), modern)
+        favorites.delete(commute)
+        XCTAssertNil(storage.loadConfiguration())
+        try storage.saveConfiguration(legacy)
+        XCTAssertTrue(try storage.loadFavorites().isEmpty, "Deleting all favorites must not trigger migration again")
+    }
+
+    @MainActor
+    func testFavoriteDeduplicationRetainsIdentityAndDifferentDirection() throws {
+        let favorites = FavoritesStore(store: try store())
+        let config = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding()]))
+        let first = SavedStop(configuration: config, nickname: "퇴근길")
+        favorites.save(first)
+        favorites.save(SavedStop(configuration: config))
+        XCTAssertEqual(favorites.items.count, 1)
+        XCTAssertEqual(favorites.items.first?.id, first.id)
+        XCTAssertEqual(favorites.items.first?.nickname, "퇴근길")
+        let opposite = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding(4)]))
+        favorites.save(SavedStop(configuration: opposite))
+        XCTAssertEqual(favorites.items.count, 2)
+    }
+
+    @MainActor
+    func testArrivalPreviewExpiresAndClearsWhenSelectionIsEmpty() async throws {
+        let config = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding(4)]))
+        let model = CommuteArrivalsModel(api: try api())
+        await model.refresh(config)
+        XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1030)), "2분")
+        XCTAssertNil(model.upcoming("gg:227000040", at: Date(timeIntervalSince1970: 1091)))
+        XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1091)), "갱신 필요")
+        await model.refresh(config.selecting([]))
+        XCTAssertNil(model.response)
+        XCTAssertFalse(model.loading)
+    }
+
+    @MainActor
+    func testArrivalFailureIsNotShownAsNoArrivals() async {
+        let model = CommuteArrivalsModel(api: nil)
+        await model.refresh(WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding()])))
+        XCTAssertNotNil(model.error)
+        XCTAssertEqual(model.label("gg:227000040", at: .now), "조회 실패")
+    }
+
+    @MainActor
+    func testStationFirstSelectionLimitAndValidationFailure() async throws {
+        let model = StationBusViewModel(station: testMapStation, api: try api("changed.test"))
+        XCTAssertFalse(model.canContinue)
+        model.toggle(occurrence())
+        for n in 1...4 { model.toggle(occurrence(route: "gg:20000000\(n)")) }
+        XCTAssertEqual(model.selections.count, 4)
+        XCTAssertTrue(model.disabled(occurrence(route: "gg:200000004")))
+        model.toggle(occurrence(4))
+        XCTAssertEqual(model.selections.first?.sequence, 4)
+        let result = await model.validate()
+        XCTAssertNil(result)
+        XCTAssertEqual(model.selections.count, 4)
+        XCTAssertNotNil(model.error)
+        model.toggle(occurrence(4))
+        XCTAssertEqual(model.selections.count, 3)
+    }
+
+    @MainActor
+    func testLegacyGyeonggiFavoriteOnlyPreselectsUnambiguousBoarding() async throws {
+        let legacy = SavedStop(configuration: WidgetConfigurationData(stationId: "05267", stationName: "강변역", routeIds: ["gg:227000040", "gg:123"]))
+        let model = StationBusViewModel(station: testMapStation, favorite: legacy, api: try api())
+        await model.load()
+        XCTAssertEqual(model.selections, [boarding()], "Two visits of the other route require an explicit direction choice")
+    }
+
     private func api(_ host: String = "routes.test") throws -> APIClient {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [RouteTestProtocol.self]
@@ -110,6 +196,18 @@ final class RouteMapTests: XCTestCase {
         let attributes = try JSONDecoder.busWidget.decode(BusWaitingAttributes.self, from: value)
         XCTAssertNil(attributes.boarding)
     }
+    func testStationSearchWithNoMatchesReturnsEmptyList() async throws {
+        let stations = try await api().searchStations(query: "9304")
+        XCTAssertTrue(stations.isEmpty)
+    }
+    func testStationSearchGatewayFailureIsNotAnEmptyResult() async throws {
+        do {
+            _ = try await api("gateway.test").searchStations(query: "9304")
+            XCTFail("A gateway failure must not be treated as no matching stations")
+        } catch let error as APIClientError {
+            XCTAssertEqual(error, .server(code: "HTTP_502", message: "서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."))
+        }
+    }
 }
 
 private final class RouteTestProtocol: URLProtocol {
@@ -119,10 +217,19 @@ private final class RouteTestProtocol: URLProtocol {
         var status = 200
         let data: Data
         switch request.url?.path {
+        case "/api/v1/stations/search":
+            if request.url?.host == "gateway.test" {
+                status = 502
+                data = Data("error code: 502".utf8)
+            } else {
+                data = Data(#"{"stations":[]}"#.utf8)
+            }
         case "/api/v2/routes/gg:227000040":
             data = try! JSONEncoder.busWidget.encode(CatalogDetail(route: testCatalogRoute, revision: "revision-a", directions: [RouteDirection(id: "outbound", name: "하남 방면"), RouteDirection(id: "inbound", name: "강변역 방면")], stops: [occurrence(), occurrence(4)]))
         case "/api/v2/routes/gg:227000040/geometry":
             data = Data(#"{"coordinates":[],"source":"stops"}"#.utf8)
+        case "/api/v2/stations/gg:104000069/boarding-options":
+            data = try! JSONEncoder.busWidget.encode(BoardingOptions(station: testMapStation, options: [occurrence(), occurrence(route: "gg:123"), occurrence(4, route: "gg:123")], complete: true, warnings: []))
         case "/api/v2/selections/validate":
             if request.url?.host == "changed.test" {
                 status = 409
@@ -139,7 +246,11 @@ private final class RouteTestProtocol: URLProtocol {
             let sent = try? JSONDecoder.busWidget.decode(SelectionRequest.self, from: body)
             XCTAssertEqual(sent?.selections.first?.sequence, 4)
             XCTAssertEqual(sent?.selections.first?.routeRef, "gg:227000040")
-            data = try! JSONEncoder.busWidget.encode(ArrivalsResponse(station: ArrivalStation(stationId: testMapStation.id, name: "강변역"), updatedAt: Date(timeIntervalSince1970: 1000), fetchedAt: Date(timeIntervalSince1970: 1000), arrivals: []))
+            data = try! JSONEncoder.busWidget.encode(ArrivalsResponse(station: ArrivalStation(stationId: testMapStation.id, name: "강변역"), updatedAt: Date(timeIntervalSince1970: 1000), fetchedAt: Date(timeIntervalSince1970: 1000), arrivals: [
+                RouteArrival(routeId: "gg:227000040", routeName: "9304", predictions: [
+                    ArrivalPrediction(order: 1, arrivalAt: Date(timeIntervalSince1970: 1120), remainingSeconds: 120, remainingStops: 2, vehicleStatus: .running)
+                ])
+            ]))
         default:
             XCTFail("Unexpected API: \(request.url?.path ?? "")")
             data = Data("{}".utf8)

@@ -90,3 +90,8 @@ struct RouteGeometry: Codable, Sendable {
     let coordinates: [Coordinate]
     let source: String
 }
+
+struct NearbyStationsResponse: Decodable {
+    let stations: [MapStation]
+    let truncated: Bool
+}

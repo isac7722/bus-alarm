@@ -49,7 +49,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: 버스 위젯
         NSSupportsLiveActivities: true
-        NSLocationWhenInUseUsageDescription: 내 위치 주변의 버스 정류장을 지도에서 확인합니다. 위치는 서버로 전송하거나 저장하지 않습니다.
+        NSLocationWhenInUseUsageDescription: 내 위치 주변의 버스 정류장을 지도에서 확인합니다. 정류장 조회를 위해 화면에 보이는 지도 범위를 서버로 전송합니다.
         CFBundleURLTypes:
           - CFBundleURLName: com.pangjoong.BusWidget.waiting
             CFBundleURLSchemes: [buswidget]

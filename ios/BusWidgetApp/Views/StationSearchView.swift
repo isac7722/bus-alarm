@@ -28,7 +28,7 @@ struct StationSearchView: View {
                     }
                 case .loaded where viewModel.stations.isEmpty:
                     ContentUnavailableView(
-                        "검색 결과가 없습니다",
+                        "정류장이 없습니다.",
                         systemImage: "bus",
                         description: Text("정류소 이름을 줄이거나 다른 표기로 검색해 보세요.")
                     )
