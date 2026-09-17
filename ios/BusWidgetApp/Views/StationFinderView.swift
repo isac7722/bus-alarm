@@ -3,6 +3,9 @@ import MapKit
 
 struct StationFinderView: View {
     var replacing: SavedStop? = nil
+    var intent: StationSelectionIntent = .explore
+    @EnvironmentObject private var favorites: FavoritesStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var model = StationFinderViewModel()
     @StateObject private var location = StationLocationService()
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -11,7 +14,14 @@ struct StationFinderView: View {
     @State private var position = TransitMapCamera(region: MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 37.5665, longitude: 126.978),
         span: MKCoordinateSpan(latitudeDelta: 0.025, longitudeDelta: 0.025)))
-    @State private var listOnly = false
+    @State private var detent: StationPanelDetent = .medium
+    @State private var beforeSearch: StationPanelDetent = .medium
+    @State private var searching = false
+    @State private var dragHeight: CGFloat?
+    @State private var dragOrigin: CGFloat?
+    @State private var listAtTop = true
+    @State private var listDragCanResize: Bool?
+    private var fullList: Bool { verticalSize == .compact || typeSize.isAccessibilitySize }
     @State private var mapMoved = false
     @State private var selectedStationID: String?
 
@@ -23,28 +33,50 @@ struct StationFinderView: View {
                     .background(AppTheme.surface)
                 Divider().overlay(AppTheme.separator)
                 if let message = location.message { Text(message).font(.callout).padding(.horizontal) }
-                if !listOnly && verticalSize != .compact && model.query.isEmpty {
-                    stationMap.frame(minHeight: 160, maxHeight: .infinity)
+                GeometryReader { geometry in
+                    let height = max(1, geometry.size.height)
+                    let panelHeight = fullList ? height : dragHeight ?? detent.height(in: height)
+                    VStack(spacing: 0) {
+                        stationMap
+                            .frame(height: max(0, height - panelHeight)).clipped()
+                            .contentShape(Rectangle())
+                            .allowsHitTesting(height - panelHeight >= 44)
+                            .accessibilityHidden(height - panelHeight < 44)
+                        VStack(spacing: 0) {
+                            panelHandle(height: height)
+                            stationList
+                                .scrollDisabled(!fullList && detent != .expanded)
+                                .simultaneousGesture(panelDrag(height: height, fromHandle: false), including: fullList ? .subviews : .all)
+                        }
+                        .frame(height: panelHeight).background(AppTheme.surface)
+                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16))
+                        .overlay(alignment: .top) { Divider().overlay(AppTheme.separator).padding(.horizontal, 16) }
+                    }
                 }
-                stationList
-                    .frame(maxHeight: listOnly || verticalSize == .compact || !model.query.isEmpty ? .infinity : 260)
             }.background(AppTheme.background).foregroundStyle(AppTheme.text).tint(AppTheme.action)
             .toolbar { if replacing != nil { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } } }
             .navigationTitle("정류장 찾기")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $model.query, prompt: "정류장 이름 또는 번호")
+            .searchable(text: $model.query, isPresented: $searching, prompt: "정류장 이름 또는 번호")
             .onChange(of: model.query) { _, _ in model.search() }
-            .onChange(of: typeSize) { _, value in if value.isAccessibilitySize { listOnly = true } }
+            .onChange(of: searching) { _, active in
+                if active { beforeSearch = detent; setDetent(.expanded) }
+                else { setDetent(beforeSearch) }
+            }
+            .onChange(of: favorites.saveNotice?.id) { _, notice in
+                guard notice != nil else { return }
+                model.selected = nil
+                if replacing != nil { dismiss() }
+            }
             .onChange(of: location.updateID) { _, _ in
                 if let point = location.coordinate {
                     let area = TransitMapCamera.locationRegion(center: point)
                     model.region = area; position = TransitMapCamera(region: area); model.query = ""
-                    if !typeSize.isAccessibilitySize { listOnly = false }
+                    beforeSearch = .collapsed; searching = false; setDetent(.collapsed)
                     model.search()
                 }
             }
             .task {
-                if typeSize.isAccessibilitySize { listOnly = true }
                 if let replacing, let station = try? await APIClient().resolveStation(id: replacing.configuration.version == 1 ? replacing.configuration.stationId : replacing.configuration.stationId.hasPrefix("gg:") ? replacing.configuration.stationId : replacing.configuration.displayNumber ?? ""),
                    let lat = station.latitude, let lon = station.longitude {
                     let area = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: lat, longitude: lon), span: MKCoordinateSpan(latitudeDelta: 0.015, longitudeDelta: 0.015))
@@ -54,7 +86,7 @@ struct StationFinderView: View {
             }
             .onDisappear { model.cancel() }
             .sheet(item: $model.selected) { station in
-                NavigationStack { StationBusSelectionView(station: station, favorite: replacing) }
+                NavigationStack { StationBusSelectionView(station: station, favorite: replacing, intent: intent) }
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
@@ -76,15 +108,77 @@ struct StationFinderView: View {
         }
     }
     @ViewBuilder private var mapDisplayControl: some View {
-        if verticalSize == .compact {
+        if searching {
+            Button("검색 취소") { model.query = ""; searching = false }
+                .frame(minHeight: 44).accessibilityIdentifier("station-search-cancel")
+        } else if fullList {
             Label("정류장 목록", systemImage: "list.bullet").foregroundStyle(AppTheme.secondaryText)
         } else {
-            Button { listOnly.toggle() } label: {
-                Label(listOnly ? "지도로 보기" : "목록으로 보기", systemImage: listOnly ? "map" : "list.bullet")
-                    .frame(minHeight: 44).contentShape(Rectangle())
-            }.foregroundStyle(AppTheme.action)
+            Text("지도에서 찾거나 목록을 올려보세요")
+                .font(.footnote).foregroundStyle(AppTheme.secondaryText)
         }
     }
+
+    private func setDetent(_ value: StationPanelDetent) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.22)) {
+            detent = value; dragHeight = nil; dragOrigin = nil; listDragCanResize = nil
+        }
+    }
+
+    private func panelHandle(height: CGFloat) -> some View {
+        Button {
+            if !fullList { setDetent(detent.next) }
+        } label: {
+            VStack(spacing: 6) {
+                if !fullList {
+                    Capsule().fill(AppTheme.separator).frame(width: 36, height: 4).accessibilityHidden(true)
+                }
+                HStack {
+                    Text("\(model.query.isEmpty ? "주변 정류장" : "검색 결과") · \(model.stations.count)개")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    if !fullList { Image(systemName: detent == .expanded ? "chevron.down" : "chevron.up") }
+                }
+            }.foregroundStyle(AppTheme.text).padding(.horizontal, 20).padding(.vertical, 10)
+             .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).disabled(fullList)
+        .accessibilityIdentifier("station-panel-handle")
+        .accessibilityLabel("정류장 목록 크기")
+        .accessibilityValue(fullList ? "펼침" : detent.label)
+        .accessibilityHint("위아래로 밀거나 두 번 탭하여 크기를 조절합니다.")
+        .accessibilityAdjustableAction { direction in
+            guard !fullList else { return }
+            switch direction {
+            case .increment: setDetent(detent == .collapsed ? .medium : .expanded)
+            case .decrement: setDetent(detent == .expanded ? .medium : .collapsed)
+            @unknown default: break
+            }
+        }
+        .highPriorityGesture(panelDrag(height: height, fromHandle: true), including: fullList ? .subviews : .all)
+    }
+
+    private func panelDrag(height: CGFloat, fromHandle: Bool) -> some Gesture {
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
+            .onChanged { value in
+                guard !fullList, abs(value.translation.height) > abs(value.translation.width) else { return }
+                if !fromHandle && listDragCanResize == nil {
+                    listDragCanResize = detent != .expanded || (listAtTop && value.translation.height > 0)
+                }
+                guard fromHandle || listDragCanResize == true else { return }
+                if dragOrigin == nil { dragOrigin = detent.height(in: height) }
+                guard let origin = dragOrigin else { return }
+                dragHeight = min(height, max(StationPanelDetent.collapsed.height(in: height), origin - value.translation.height))
+            }
+            .onEnded { value in
+                listDragCanResize = nil
+                guard let origin = dragOrigin else { return }
+                let projected = origin - value.predictedEndTranslation.height
+                let nearest = StationPanelDetent.allCases.min { abs($0.height(in: height) - projected) < abs($1.height(in: height) - projected) } ?? detent
+                setDetent(nearest)
+            }
+    }
+
     private var myLocationButton: some View {
         Button { location.request() } label: {
             HStack(spacing: 6) {
@@ -120,21 +214,25 @@ struct StationFinderView: View {
         }
     }
     private var stationList: some View {
-        List {
-            if model.loading || model.resolving { ProgressView(model.resolving ? "정류장을 확인하는 중…" : "정류장을 찾는 중…") }
-            if let error = model.error {
-                Section {
-                    Text(error).font(.callout)
-                    Button("다시 시도") { model.search() }.foregroundStyle(AppTheme.action)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                GeometryReader { geometry in
+                    Color.clear.preference(key: StationListOffsetKey.self, value: geometry.frame(in: .named("station-list")).minY)
+                }.frame(height: 0)
+                if model.loading || model.resolving {
+                    ProgressView(model.resolving ? "정류장을 확인하는 중…" : "정류장을 찾는 중…").padding(20)
                 }
-            } else if !model.loading && model.stations.isEmpty {
-                TransitEmptyState(title: "정류장이 없습니다.", symbol: "magnifyingglass",
-                    message: model.query.isEmpty ? "지도를 옮기거나 정류장 이름으로 검색해 주세요." : "다른 정류장 이름이나 번호로 검색해 주세요.")
-                    .listRowSeparator(.hidden).listRowBackground(AppTheme.surface)
-            }
-            if model.truncated { Text("정류장이 많습니다. 지도를 확대해 주세요.").font(.callout) }
-            if !model.stations.isEmpty {
-                Section {
+                if let error = model.error {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(error).font(.callout)
+                        Button("다시 시도") { model.search() }.frame(minHeight: 44)
+                    }.padding(.horizontal, 20)
+                } else if !model.loading && model.stations.isEmpty {
+                    TransitEmptyState(title: "정류장이 없습니다.", symbol: "magnifyingglass",
+                        message: model.query.isEmpty ? "지도를 옮기거나 정류장 이름으로 검색해 주세요." : "다른 정류장 이름이나 번호로 검색해 주세요.")
+                }
+                if model.truncated { Text("정류장이 많습니다. 지도를 확대해 주세요.").font(.callout).padding(20) }
+                LazyVStack(spacing: 0) {
                     ForEach(model.stations) { station in
                         Button { selectedStationID = station.id; Task { await model.select(station) } } label: {
                             HStack(spacing: 12) {
@@ -147,21 +245,57 @@ struct StationFinderView: View {
                                 Spacer(minLength: 8)
                                 Image(systemName: "chevron.right").font(.caption.weight(.semibold))
                                     .foregroundStyle(AppTheme.secondaryText).accessibilityHidden(true)
-                            }.frame(minHeight: 44).padding(.vertical, 6).contentShape(Rectangle())
-                        }.buttonStyle(.plain).disabled(model.resolving)
+                            }.frame(minHeight: 44).padding(.horizontal, 20).padding(.vertical, 12).contentShape(Rectangle())
+                        }.buttonStyle(.plain).disabled(model.resolving || dragOrigin != nil)
                          .accessibilityIdentifier("station-row.\(station.id)")
-                         .listRowBackground(selectedStationID == station.id ? AppTheme.selection : AppTheme.surface)
+                         .background(selectedStationID == station.id ? AppTheme.selection : AppTheme.surface)
+                        Divider().padding(.horizontal, 20)
                     }
-                } header: {
-                    Text("\(model.query.isEmpty ? "주변 정류장" : "검색 결과") · \(model.stations.count)개")
-                        .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.secondaryText)
-                        .textCase(nil)
+                }
+                if !model.stations.isEmpty {
+                    Text("길 건너편 정류장과 번호를 구분해 주세요. 버스의 방면은 정류장을 선택한 뒤 확인할 수 있습니다.")
+                        .font(.footnote).foregroundStyle(AppTheme.secondaryText).padding(20)
                 }
             }
-            if !model.stations.isEmpty {
-                Text("길 건너편 정류장과 번호를 구분해 주세요. 버스의 방면은 정류장을 선택한 뒤 확인할 수 있습니다.")
-                    .font(.footnote).foregroundStyle(AppTheme.secondaryText)
-            }
-        }.listStyle(.plain).scrollContentBackground(.hidden).background(AppTheme.surface)
+        }
+        .coordinateSpace(name: "station-list")
+        .modifier(StationListPositionObserver(atTop: $listAtTop))
+        .accessibilityIdentifier("station-results")
+        .background(AppTheme.surface)
+    }
+}
+
+private enum StationPanelDetent: CaseIterable {
+    case collapsed, medium, expanded
+    var label: String {
+        switch self { case .collapsed: "접힘"; case .medium: "중간"; case .expanded: "펼침" }
+    }
+    var next: Self {
+        switch self { case .collapsed: .medium; case .medium: .expanded; case .expanded: .collapsed }
+    }
+    func height(in available: CGFloat) -> CGFloat {
+        switch self {
+        case .collapsed: min(148, available * 0.3)
+        case .medium: max(min(148, available * 0.3), available * 0.4)
+        case .expanded: available
+        }
+    }
+}
+
+private struct StationListOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = min(value, nextValue()) }
+}
+
+private struct StationListPositionObserver: ViewModifier {
+    @Binding var atTop: Bool
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y <= geometry.contentInsets.top + 1
+            } action: { _, value in atTop = value }
+        } else {
+            content.onPreferenceChange(StationListOffsetKey.self) { atTop = $0 >= -1 }
+        }
     }
 }

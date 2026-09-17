@@ -101,8 +101,6 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
     private var groups: [TransitMarkerGroup] = []
     private var detail: TransitMarkerDetail = .overview
     private var scaleMeters: Double = 0
-    private var markerOffsets: [String: CGPoint] = [:]
-    private let connectorLayer = CAShapeLayer()
     private var lastLayoutSize: CGSize = .zero
     private var moving = false
     private var pinSignature: [String] = []
@@ -123,10 +121,6 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         mapView.locale = "ko"
         mapView.addCameraDelegate(delegate: self)
         clipsToBounds = true
-        connectorLayer.fillColor = nil
-        connectorLayer.lineWidth = 1
-        // Above the SDK renderer, below our marker buttons.
-        layer.addSublayer(connectorLayer)
         userLocationView.isHidden = true
         // A noninteractive geographic anchor, below stop buttons and map controls.
         addSubview(userLocationView)
@@ -172,6 +166,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         let nearest = buttons.values.filter { !$0.isHidden && $0.isEnabled && $0.frame.contains(point) }.min {
             let a = hypot($0.center.x - point.x, $0.center.y - point.y)
             let b = hypot($1.center.x - point.x, $1.center.y - point.y)
+            if a == b, $0.isSelected != $1.isSelected { return $0.isSelected }
             return a == b ? ($0.accessibilityIdentifier ?? "") < ($1.accessibilityIdentifier ?? "") : a < b
         }
         return nearest ?? hit
@@ -248,8 +243,6 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         }
         let selectedIDs = Set(pins.filter(\.selected).map(\.id))
         groups = TransitMarkerLayout.groups(points, scaleMeters: scaleMeters, protectedIDs: selectedIDs)
-        markerOffsets = TransitMarkerLayout.offsets(groups.map { TransitMarkerPoint(id: $0.id, point: $0.center) },
-                                                   in: visible)
         let ids = Set(groups.map(\.id))
         for id in Array(buttons.keys) where !ids.contains(id) {
             buttons.removeValue(forKey: id)?.removeFromSuperview()
@@ -340,29 +333,16 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         }
         let byID = Dictionary(uniqueKeysWithValues: pins.map { ($0.id, $0) })
         let visible = markerBounds
-        let connectors = UIBezierPath()
         for group in groups {
             guard let button = buttons[group.id] else { continue }
             let points = group.members.compactMap { byID[$0.id].map { project($0.coordinate) } }
             guard !points.isEmpty else { button.isHidden = true; continue }
             let center = CGPoint(x: points.reduce(0) { $0 + $1.x } / CGFloat(points.count),
                                  y: points.reduce(0) { $0 + $1.y } / CGFloat(points.count))
-            let offset = markerOffsets[group.id] ?? .zero
-            let displayed = CGPoint(x: center.x + offset.x, y: center.y + offset.y)
-            button.center = mapView.convert(displayed, to: self)
-            button.isHidden = !visible.contains(displayed)
-            if !button.isHidden && offset != .zero {
-                let anchor = mapView.convert(center, to: self)
-                connectors.move(to: anchor)
-                connectors.addLine(to: button.center)
-                connectors.append(UIBezierPath(ovalIn: CGRect(x: anchor.x - 2, y: anchor.y - 2, width: 4, height: 4)))
-            }
+            // Individual icons stay at their projected coordinates, even when they overlap.
+            button.center = mapView.convert(center, to: self)
+            button.isHidden = !visible.contains(center)
         }
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        connectorLayer.strokeColor = UIColor.secondaryLabel.resolvedColor(with: traitCollection).cgColor
-        connectorLayer.path = connectors.cgPath
-        CATransaction.commit()
         // Give the selected stop first choice of label space, including at overview scales.
         var occupied = buttons.values.filter { !$0.isHidden }.map { $0.frame.insetBy(dx: -4, dy: -4) }
         let labelGroups = groups.sorted {
@@ -436,9 +416,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         for button in buttons.values { button.menu = nil; button.removeFromSuperview() }
         buttons = [:]
         groups = []
-        markerOffsets = [:]
         userLocationView.setPulsing(false)
         userCoordinate = nil
-        connectorLayer.path = nil
     }
 }

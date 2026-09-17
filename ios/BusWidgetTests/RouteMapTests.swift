@@ -18,6 +18,48 @@ private let testCatalogRoute = CatalogRoute(routeRef: "gg:227000040", name: "930
 
 final class RouteMapTests: XCTestCase {
     @MainActor
+    func testUndoDeleteRestoresOriginalPositionWithoutLosingNewFavorites() throws {
+        let storage = try store()
+        let favorites = FavoritesStore(store: storage, client: nil)
+        let first = SavedStop(configuration: WidgetConfigurationData(stationId: "1", stationName: "첫 정류장", routeIds: ["1"]))
+        let second = SavedStop(configuration: WidgetConfigurationData(stationId: "2", stationName: "둘째 정류장", routeIds: ["2"]))
+        let third = SavedStop(configuration: WidgetConfigurationData(stationId: "3", stationName: "새 정류장", routeIds: ["3"]))
+        favorites.save(first); favorites.save(second)
+        XCTAssertTrue(favorites.delete(first))
+        favorites.save(third)
+        favorites.undoDelete()
+        XCTAssertEqual(favorites.items, [first, second, third])
+        XCTAssertEqual(try storage.loadFavorites(), favorites.items)
+        XCTAssertNil(favorites.deletedFavorite)
+    }
+
+    @MainActor
+    func testUndoDoesNotDuplicateOrOverwriteNewlySavedEquivalentFavorite() throws {
+        let favorites = FavoritesStore(store: try store(), client: nil)
+        let original = SavedStop(configuration: WidgetConfigurationData(stationId: "1", stationName: "정류장", routeIds: ["1"]))
+        favorites.save(original); favorites.delete(original)
+        let refreshed = SavedStop(configuration: original.configuration, nickname: "새 이름")
+        favorites.save(refreshed); favorites.undoDelete()
+        XCTAssertEqual(favorites.items, [refreshed])
+        favorites.announceSave(SavedStop(configuration: original.configuration))
+        XCTAssertEqual(favorites.saveNotice?.favoriteID, refreshed.id)
+    }
+
+    @MainActor
+    func testOldDeletionTimeoutDoesNotClearNewUndoAndFailedDeleteHasNoUndo() throws {
+        let favorites = FavoritesStore(store: try store(), client: nil)
+        let first = SavedStop(configuration: WidgetConfigurationData(stationId: "1", stationName: "정류장", routeIds: ["1"]))
+        favorites.save(first); favorites.delete(first)
+        let oldID = try XCTUnwrap(favorites.deletedFavorite?.id)
+        favorites.undoDelete(); favorites.delete(first)
+        favorites.expireDeletion(oldID)
+        XCTAssertNotNil(favorites.deletedFavorite)
+        let failed = FavoritesStore(store: nil, client: nil)
+        XCTAssertFalse(failed.delete(first))
+        XCTAssertNil(failed.deletedFavorite)
+    }
+
+    @MainActor
     func testFavoriteDeduplicationRetainsIdentityAndDifferentDirection() throws {
         let favorites = FavoritesStore(store: try store())
         let config = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding()]))

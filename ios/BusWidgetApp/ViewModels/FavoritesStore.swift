@@ -5,6 +5,17 @@ final class FavoritesStore: ObservableObject {
     @Published private(set) var items: [SavedStop] = []
     @Published private(set) var loadingNames: Set<UUID> = []
     @Published var error: String?
+    struct SaveNotice: Equatable {
+        let id = UUID()
+        let favoriteID: UUID
+    }
+    struct DeletedFavorite {
+        let id = UUID()
+        let favorite: SavedStop
+        let index: Int
+    }
+    @Published var saveNotice: SaveNotice?
+    @Published private(set) var deletedFavorite: DeletedFavorite?
     private let store: AppGroupStore?
     private let client: APIClient?
 
@@ -34,8 +45,33 @@ final class FavoritesStore: ObservableObject {
         } else { updated.append(favorite) }
         return persist(updated)
     }
-    func delete(_ favorite: SavedStop) {
-        _ = persist(items.filter { $0.id != favorite.id })
+    func announceSave(_ favorite: SavedStop) {
+        guard let saved = items.first(where: { $0.id == favorite.id || $0.combinationID == favorite.combinationID }) else { return }
+        saveNotice = SaveNotice(favoriteID: saved.id)
+    }
+
+    @discardableResult
+    func delete(_ favorite: SavedStop) -> Bool {
+        guard let index = items.firstIndex(where: { $0.id == favorite.id }) else { return false }
+        let removed = items[index]
+        guard persist(items.filter { $0.id != favorite.id }) else { return false }
+        saveNotice = nil
+        deletedFavorite = DeletedFavorite(favorite: removed, index: index)
+        return true
+    }
+
+    func undoDelete() {
+        guard let deleted = deletedFavorite else { return }
+        var updated = items
+        // A newly saved equivalent favorite takes precedence over an old undo record.
+        if !updated.contains(where: { $0.id == deleted.favorite.id || $0.combinationID == deleted.favorite.combinationID }) {
+            updated.insert(deleted.favorite, at: min(deleted.index, updated.count))
+        }
+        if persist(updated) { deletedFavorite = nil }
+    }
+
+    func expireDeletion(_ id: UUID) {
+        if deletedFavorite?.id == id { deletedFavorite = nil }
     }
 
     func updateRouteNames(_ routes: [RouteSummary], for original: SavedStop) {
@@ -65,6 +101,7 @@ final class FavoritesStore: ObservableObject {
             guard let store else { throw CocoaError(.fileWriteUnknown) }
             try store.saveFavorites(updated)
             items = updated
+            error = nil
             return true
         } catch { self.error = "즐겨찾기를 저장하지 못했습니다. 다시 시도해 주세요."; return false }
     }

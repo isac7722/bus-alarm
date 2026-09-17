@@ -56,6 +56,12 @@ class Handler(BaseHTTPRequestHandler):
             body = {"route_map": True}
         elif path.endswith("/stations/nearby"):
             stations = [STATION]
+            if self.path.startswith("/many/"):
+                stations += [
+                    {**STATION, "station_ref": f"gg:scroll-{index}", "name": f"목록 테스트 정류장 {index}",
+                     "display_number": f"{5300 + index}"}
+                    for index in range(1, 25)
+                ]
             if self.path.startswith(("/cluster/", "/coincident/")):
                 stations.append(
                     {

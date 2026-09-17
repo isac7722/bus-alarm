@@ -2,8 +2,10 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject private var waiting: BusWaitingManager
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var favorites: FavoritesStore
+    @State private var addingFavorite = false
     @State private var tab: Int
     @State private var available: Bool?
     @State private var discoveryError: String?
@@ -16,10 +18,10 @@ struct RootView: View {
     }
     var body: some View {
         TabView(selection: $tab) {
-            FavoritesView { tab = 1 }
+            FavoritesView { addingFavorite = true; tab = 1 }
                 .tabItem { Label("즐겨찾기", systemImage: "bookmark") }.tag(0)
             Group {
-                if available == true { StationFinderView() }
+                if available == true { StationFinderView(intent: addingFavorite ? .addFavorite : .explore) }
                 else if available == nil && discoveryError == nil {
                     ProgressView("정류장 지도를 준비하는 중…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity).background(AppTheme.background)
@@ -35,6 +37,20 @@ struct RootView: View {
                     }.frame(maxWidth: .infinity, maxHeight: .infinity).background(AppTheme.background)
                 }
             }.tabItem { Label("정류장 찾기", systemImage: "bus") }.tag(1)
+        }
+        .onChange(of: favorites.saveNotice?.id) { _, notice in
+            if notice != nil { tab = 0; addingFavorite = false }
+        }
+        .onChange(of: tab) { _, value in if value == 0 { addingFavorite = false } }
+        .task(id: favorites.deletedFavorite?.id) {
+            guard let deleted = favorites.deletedFavorite, !voiceOver else { return }
+            do { try await Task.sleep(for: .seconds(8)) } catch { return }
+            favorites.expireDeletion(deleted.id)
+        }
+        .task(id: favorites.saveNotice?.id) {
+            guard let notice = favorites.saveNotice else { return }
+            do { try await Task.sleep(for: .seconds(4)) } catch { return }
+            if favorites.saveNotice?.id == notice.id { favorites.saveNotice = nil }
         }
         .environmentObject(favorites)
         .tint(AppTheme.primary)

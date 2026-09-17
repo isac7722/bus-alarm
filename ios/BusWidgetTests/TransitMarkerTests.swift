@@ -143,35 +143,23 @@ final class TransitMarkerTests: XCTestCase {
         XCTAssertEqual(TransitMarkerLayout.scaleMeters(barDistance: 0), 0)
     }
 
-    func testCoincidentStopsSpreadInsideMapWithoutLosingTheirAnchors() {
+    func testCoincidentStopsKeepTheirExactCoordinates() {
         let points = (0..<8).map { TransitMarkerPoint(id: String($0), point: CGPoint(x: 25, y: 25)) }
-        let bounds = CGRect(x: 24, y: 24, width: 280, height: 240)
-        let offsets = TransitMarkerLayout.offsets(points, in: bounds)
-        XCTAssertEqual(offsets["0"], .zero)
-        XCTAssertEqual(offsets, TransitMarkerLayout.offsets(points.reversed(), in: bounds))
-        let displayed = points.map { CGPoint(x: $0.point.x + offsets[$0.id]!.x, y: $0.point.y + offsets[$0.id]!.y) }
-        XCTAssertTrue(displayed.allSatisfy { bounds.contains($0) })
-        for i in displayed.indices {
-            for j in displayed.indices where j > i {
-                XCTAssertGreaterThanOrEqual(hypot(displayed[i].x - displayed[j].x, displayed[i].y - displayed[j].y), 43.99)
-            }
-        }
-        XCTAssertTrue(points.allSatisfy { $0.point == CGPoint(x: 25, y: 25) })
+        let groups = TransitMarkerLayout.groups(points, scaleMeters: 200)
+        XCTAssertEqual(groups.count, points.count)
+        XCTAssertTrue(groups.allSatisfy { $0.center == CGPoint(x: 25, y: 25) })
+        XCTAssertEqual(Set(groups.map(\.id)), Set(points.map(\.id)))
     }
 
-    func testSelectingNearbyStopsDoesNotChangeIndividualMarkerPositions() {
+    func testSelectingNearbyStopsKeepsTheirOriginalCoordinates() {
         let points = [TransitMarkerPoint(id: "a", point: CGPoint(x: 100, y: 100)),
                       TransitMarkerPoint(id: "b", point: CGPoint(x: 105, y: 100)),
                       TransitMarkerPoint(id: "c", point: CGPoint(x: 110, y: 102))]
-        let bounds = CGRect(x: 24, y: 24, width: 280, height: 240)
-        let original = TransitMarkerLayout.offsets(points, in: bounds)
-        XCTAssertNotEqual(original["b"], .zero)
         for selected in ["b", "c", "a", "b"] {
-            // Grouping puts the selected stop first; layout must keep the original positions.
             let groups = TransitMarkerLayout.groups(points, scaleMeters: 200, protectedIDs: [selected])
-            let offsets = TransitMarkerLayout.offsets(groups.map { TransitMarkerPoint(id: $0.id, point: $0.center) },
-                                                      in: bounds)
-            XCTAssertEqual(offsets, original)
+            for point in points {
+                XCTAssertEqual(groups.first { $0.id == point.id }?.center, point.point)
+            }
         }
     }
 

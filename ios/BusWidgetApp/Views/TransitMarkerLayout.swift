@@ -100,39 +100,6 @@ enum TransitMarkerLayout {
         return singles + groups
     }
 
-    /// Keep displaced individual stops selectable, inside the map, and attached to their true anchor.
-    /// Call only at camera idle; retain these offsets while the user pans or pinches.
-    /// Selection changes styling, never placement priority: otherwise nearby pins swap positions on tap.
-    static func offsets(_ points: [TransitMarkerPoint], in bounds: CGRect) -> [String: CGPoint] {
-        var occupied: [CGPoint] = []
-        var result: [String: CGPoint] = [:]
-        let ordered = points.sorted { $0.id < $1.id }
-        for point in ordered {
-            var target = point.point
-            if occupied.contains(where: { hypot($0.x - target.x, $0.y - target.y) < 36 }) {
-                let rings = Int(ceil(max(bounds.width, bounds.height) / hitSize)) + 1
-                search: for ring in 1...max(1, rings) {
-                    let radius = CGFloat(ring) * hitSize
-                    let count = max(8, ring * 8)
-                    for index in 0..<count {
-                        let angle = CGFloat(index) * 2 * .pi / CGFloat(count)
-                        let candidate = CGPoint(x: point.point.x + cos(angle) * radius,
-                                                y: point.point.y + sin(angle) * radius)
-                        if bounds.contains(candidate), !occupied.contains(where: {
-                            hypot($0.x - candidate.x, $0.y - candidate.y) < hitSize
-                        }) {
-                            target = candidate
-                            break search
-                        }
-                    }
-                }
-            }
-            occupied.append(target)
-            result[point.id] = CGPoint(x: target.x - point.point.x, y: target.y - point.point.y)
-        }
-        return result
-    }
-
     static func expansionFactor(points: [CGPoint], scaleMeters: Double, available: CGSize) -> Double {
         guard points.count > 1 else { return 2 }
         let width = (points.map(\.x).max() ?? 0) - (points.map(\.x).min() ?? 0)
