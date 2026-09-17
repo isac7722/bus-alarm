@@ -1,19 +1,30 @@
 #!/usr/bin/env bash
-# Each run owns its containers and uses random host ports, never application data.
+# Each run owns a private network and containers, never application data.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-run_id="buswidget-go-test-$$"
+if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != "--checks" ]; }; then
+  echo "Usage: $0 [--checks]" >&2
+  exit 2
+fi
+repo_root="$(cd .. && pwd)"
+run_id="buswidget-go-test-$(date +%s)-$$"
 postgres_name="${run_id}-postgres"
 redis_name="${run_id}-redis"
+runner_name="${run_id}-runner"
 cleanup() {
-  docker rm -f "$postgres_name" "$redis_name" >/dev/null 2>&1 || true
+  docker rm -fv "$runner_name" "$postgres_name" "$redis_name" >/dev/null 2>&1 || true
+  docker network rm "$run_id" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
-docker run -d --name "$postgres_name" \
+docker network create "$run_id" >/dev/null
+docker run -d --name "$postgres_name" --network "$run_id" --network-alias postgres \
   -e POSTGRES_PASSWORD=test -e POSTGRES_DB=buswidget \
-  -p 127.0.0.1::5432 postgres:17-alpine >/dev/null
-docker run -d --name "$redis_name" -p 127.0.0.1::6379 redis:7.4-alpine >/dev/null
+  postgres:17-alpine >/dev/null
+docker run -d --name "$redis_name" --network "$run_id" --network-alias redis \
+  redis:7.4-alpine >/dev/null
 for attempt in {1..30}; do
   if docker exec "$postgres_name" pg_isready -U postgres -d buswidget >/dev/null 2>&1 && \
      docker exec "$redis_name" redis-cli ping >/dev/null 2>&1; then
@@ -25,8 +36,26 @@ for attempt in {1..30}; do
   fi
   sleep 1
 done
-postgres_address="$(docker port "$postgres_name" 5432/tcp)"
-redis_address="$(docker port "$redis_name" 6379/tcp)"
-TEST_DATABASE_URL="postgresql://postgres:test@${postgres_address}/buswidget" \
-TEST_REDIS_URL="redis://${redis_address}/0" \
-  go test -race -count=1 -cover ./...
+echo "Docker의 Go 1.26.1 환경에서 백엔드 테스트를 실행합니다."
+# Bookworm includes the C compiler required by Go's race detector. Keep source
+# read-only, reuse compilation/module caches, and do not mount the Docker socket.
+docker run --rm --name "$runner_name" --network "$run_id" \
+  --mount "type=bind,src=$repo_root,dst=/workspace,readonly" \
+  --mount type=volume,src=buswidget-test-gomod,dst=/go/pkg/mod \
+  --mount type=volume,src=buswidget-test-gobuild,dst=/root/.cache/go-build \
+  --workdir /workspace/backend \
+  -e TEST_DATABASE_URL=postgresql://postgres:test@postgres:5432/buswidget \
+  -e TEST_REDIS_URL=redis://redis:6379/0 \
+  -e CGO_ENABLED=1 -e GOFLAGS=-mod=readonly \
+  golang:1.26.1-bookworm bash -euo pipefail -c '
+    if [ "${1:-}" = "--checks" ]; then
+      unformatted="$(gofmt -l cmd internal app/content/content.go)"
+      if [ -n "$unformatted" ]; then
+        echo "gofmt 검사가 실패했습니다:" >&2
+        echo "$unformatted" >&2
+        exit 1
+      fi
+      go vet ./...
+    fi
+    go test -race -count=1 -cover ./...
+  ' -- "$@"

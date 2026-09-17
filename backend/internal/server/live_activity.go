@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -286,7 +285,7 @@ func validateAPNsConfig(c Config) error {
 		return nil
 	}
 	if c.APNsKeyPath == "" || c.APNsKeyID == "" || c.APNsTeamID == "" || c.APNsBundleID == "" {
-		return fmt.Errorf("set APNS_KEY_PATH, APNS_KEY_ID, APNS_TEAM_ID and APNS_BUNDLE_ID together")
+		return startupFailure("set APNS_KEY_PATH, APNS_KEY_ID, APNS_TEAM_ID and APNS_BUNDLE_ID together; Docker deployments need docker-compose.apns.yml")
 	}
 	return nil
 }

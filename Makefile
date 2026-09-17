@@ -2,7 +2,8 @@ SHELL := /bin/bash
 
 .DEFAULT_GOAL := help
 
-COMPOSE := docker compose
+APNS ?= 0
+COMPOSE := docker compose $(if $(filter 1,$(APNS)),-f docker-compose.yml -f docker-compose.apns.yml)
 HEALTH_URL ?= http://127.0.0.1:8000/health
 HEALTH_ATTEMPTS ?= 30
 IOS_DIR := ios
@@ -59,8 +60,8 @@ xcode: check-xcode ## Xcode 프로젝트를 생성하고 Xcode에서 엽니다.
 stop: check-docker ## Docker 서버와 관련 컨테이너를 종료합니다.
 	$(COMPOSE) down
 
-restart: check-docker ## backend를 다시 빌드하고 재생성한 뒤 준비 상태를 확인합니다.
-	$(COMPOSE) up --build -d --force-recreate backend
+restart: check-docker ## 기존 DB를 유지하고 backend만 재빌드합니다. 실시간 현황 사용 시 APNS=1.
+	$(COMPOSE) up --build -d --no-deps --force-recreate backend
 	@$(MAKE) --no-print-directory wait-server
 
 logs: check-docker ## backend 로그를 실시간으로 표시합니다. 종료는 Ctrl+C입니다.
@@ -73,10 +74,8 @@ test: ## 백엔드 검사와 iOS 테스트를 모두 실행합니다.
 	@$(MAKE) --no-print-directory test-backend
 	@$(MAKE) --no-print-directory test-ios
 
-test-backend: check-docker ## Go 검사와 격리된 PostgreSQL·Redis 통합 테스트를 실행합니다.
-	@cd backend && test -z "$$(gofmt -l cmd internal app/content/content.go)" || { echo "gofmt 검사가 실패했습니다."; exit 1; }
-	@cd backend && go vet ./...
-	@bash backend/scripts/test-integration.sh
+test-backend: check-docker ## Docker 안에서 Go 검사와 DB·Redis 통합 테스트를 실행합니다. 호스트 Go 불필요.
+	@bash backend/scripts/test-integration.sh --checks
 
 test-backend-unit: ## Docker 없이 Go 단위·호환성 테스트를 실행합니다.
 	@cd backend && go test -race ./...
@@ -109,7 +108,7 @@ wait-server:
 
 check-docker:
 	@command -v docker >/dev/null 2>&1 || { echo "오류: Docker를 설치해 주세요."; exit 1; }
-	@docker info >/dev/null 2>&1 || { echo "오류: Docker Desktop을 실행해 주세요."; exit 1; }
+	@docker info >/dev/null 2>&1 || { echo "오류: Docker 데몬을 실행해 주세요."; exit 1; }
 
 check-xcode:
 	@command -v xcodegen >/dev/null 2>&1 || { echo "오류: 'brew install xcodegen'으로 XcodeGen을 설치해 주세요."; exit 1; }

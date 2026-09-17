@@ -36,7 +36,7 @@ make dev       서버 실행 후 Xcode 열기
 make server    서버만 실행
 make xcode     Xcode 프로젝트 생성 후 열기
 make stop      서버 종료
-make restart   backend 재빌드 및 재시작
+make restart   기존 DB를 유지하고 backend만 재빌드 및 재시작
 make logs      backend 로그 확인
 make status    컨테이너 상태 확인
 make test      백엔드 및 iOS 테스트
@@ -167,7 +167,7 @@ make testflight-script-test  # 자동화 로직의 오프라인 테스트
 백엔드:
 
 ```bash
-make test-backend       # Go 1.26.1+ 및 Docker 필요, 임시 DB·Redis 자동 생성·정리
+make test-backend       # Docker만 필요, Go 검사·테스트와 임시 DB·Redis 자동 실행·정리
 make test-backend-unit  # Docker 없이 단위·Python 응답 호환성 검사
 ```
 

@@ -35,19 +35,19 @@ type APNsClient struct {
 func NewAPNsClient(c Config) (*APNsClient, error) {
 	data, err := os.ReadFile(c.APNsKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read APNS_KEY_PATH")
+		return nil, startupFailure("cannot read APNS_KEY_PATH; check the APNs secret mount and file permissions")
 	}
 	block, _ := pem.Decode(data)
 	if block == nil {
-		return nil, fmt.Errorf("APNS_KEY_PATH must contain a PKCS8 private key")
+		return nil, startupFailure("APNS_KEY_PATH must contain a PKCS8 private key")
 	}
 	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("invalid APNs private key")
+		return nil, startupFailure("invalid APNs private key")
 	}
 	key, ok := parsed.(*ecdsa.PrivateKey)
 	if !ok || key.Curve != elliptic.P256() {
-		return nil, fmt.Errorf("APNs requires an ES256 private key")
+		return nil, startupFailure("APNs requires an ES256 private key")
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ForceAttemptHTTP2 = true

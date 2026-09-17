@@ -9,8 +9,8 @@ import (
 
 func main() {
 	if err := server.Run(os.Args[1:]); err != nil {
-		// Driver and transport errors can contain credentials. Log their type only.
-		server.NewLogger().Error("command_failed", "error_type", fmt.Sprintf("%T", err), "message", "Check configuration and required services")
+		// Only explicitly safe startup diagnostics may be included in the message.
+		server.NewLogger().Error("command_failed", "error_type", fmt.Sprintf("%T", err), "message", server.CommandFailureMessage(err))
 		os.Exit(1)
 	}
 }

@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"os"
 	"strconv"
@@ -25,7 +24,7 @@ type Config struct {
 func LoadConfig() (Config, error) {
 	values, err := godotenv.Read(".env")
 	if err != nil && !os.IsNotExist(err) {
-		return Config{}, fmt.Errorf("invalid .env file")
+		return Config{}, startupFailure("invalid .env file")
 	}
 	env := map[string]string{}
 	for k, v := range values {
@@ -56,7 +55,7 @@ func parseConfig(env map[string]string) (Config, error) {
 		c.MockArrivals = true
 	case "false", "0", "off", "no", "n", "f":
 	default:
-		return c, fmt.Errorf("invalid MOCK_ARRIVALS")
+		return c, startupFailure("invalid MOCK_ARRIVALS")
 	}
 	for _, f := range []struct {
 		k, d     string
@@ -68,25 +67,25 @@ func parseConfig(env map[string]string) (Config, error) {
 		if err != nil {
 			x, e := strconv.ParseFloat(value, 64)
 			if e != nil || math.IsNaN(x) || math.IsInf(x, 0) || math.Trunc(x) != x || x > float64(math.MaxInt) {
-				return c, fmt.Errorf("invalid %s", f.k)
+				return c, startupFailure("invalid " + f.k)
 			}
 			n = int(x)
 		}
 		if n < f.min || f.max > 0 && n > f.max {
-			return c, fmt.Errorf("invalid %s", f.k)
+			return c, startupFailure("invalid " + f.k)
 		}
 		*f.target = n
 	}
 	seconds, err := strconv.ParseFloat(get("HTTP_TIMEOUT_SECONDS", "5"), 64)
 	if err != nil || math.IsNaN(seconds) || seconds <= 0 || seconds > 30 {
-		return c, fmt.Errorf("invalid HTTP_TIMEOUT_SECONDS")
+		return c, startupFailure("invalid HTTP_TIMEOUT_SECONDS")
 	}
 	c.HTTPTimeout = time.Duration(seconds * float64(time.Second))
 	if err := json.Unmarshal([]byte(get("CORS_ORIGINS", "[]")), &c.CORSOrigins); err != nil || c.CORSOrigins == nil {
-		return c, fmt.Errorf("invalid CORS_ORIGINS")
+		return c, startupFailure("invalid CORS_ORIGINS")
 	}
 	if c.Prefix != "" && (!strings.HasPrefix(c.Prefix, "/") || strings.HasSuffix(c.Prefix, "/")) {
-		return c, fmt.Errorf("invalid API_V1_PREFIX")
+		return c, startupFailure("invalid API_V1_PREFIX")
 	}
 	return c, nil
 }

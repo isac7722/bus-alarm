@@ -47,10 +47,10 @@ curl --fail http://localhost:8000/api/v1/live-activities/availability
 
 키 설정이 없으면 기존 API는 정상 동작하고, 실시간 현황 시작은 준비 중 안내를 표시합니다. 설정이 일부만 있거나 키 파일을 읽지 못하면 서버 시작이 실패하여 잘못 설정된 푸시를 조기에 발견할 수 있습니다. Apple 키 권한·서명 유효성은 실제 APNs 전송 시 확인됩니다. 서버에서 APNs의 HTTPS/HTTP2 연결이 가능해야 합니다.
 
-**재배포·재시작에도 같은 `-f docker-compose.apns.yml` 옵션을 사용하세요.** 기본 `make server`/`make restart`는 이 추가 파일을 적용하지 않습니다. 예:
+**재배포·재시작에도 APNs 설정을 함께 적용하세요.** Make에서는 `APNS=1`로 추가 파일을 적용합니다. 실행 중인 서버의 백엔드만 반영하는 예:
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.apns.yml up --build -d backend
+make restart APNS=1
 ```
 
 ## 3. 실기기 검증

@@ -8,6 +8,19 @@ Go 1.26.1 기반 BusWidget API입니다. 전체 앱 실행은 상위 [README](..
 
 기존 `make server`와 `docker compose up --build -d`는 PostgreSQL → 마이그레이션 → 정류소 import → API 순서로 실행합니다. API는 8000 포트를 사용합니다.
 
+이미 실행 중인 서버의 백엔드만 반영할 때는 다음을 **실제 서빙하는 서버의 저장소 디렉터리에서** 사용합니다. 서버의 `backend/.env`에 필요한 API 키를 먼저 설정하세요. 개발 PC의 `.env`와 DB 데이터는 Git으로 전달되지 않습니다. 경기 API 연동은 노선을 DB에 적재하는 방식이 아니므로 정류소 CSV 재반영이나 DB 마이그레이션이 필요하지 않습니다.
+
+```bash
+make test-backend       # Docker만 필요, Go 검사와 임시 DB·Redis 테스트
+make restart APNS=1    # APNs 사용 서버: backend만 재빌드하고 /health 확인
+make status
+make logs
+```
+
+APNs를 사용하지 않으면 `make restart`로 실행합니다. `restart`는 `--no-deps`를 사용하므로 PostgreSQL·Redis가 이미 실행 중이어야 하며, 정류소 import와 마이그레이션은 재실행하지 않습니다. 백엔드 반영 자체에는 Docker만 필요하고 호스트 Go는 필요하지 않습니다. `make test`는 iOS 테스트도 포함하므로 우분투에서는 `make test-backend`를 사용합니다.
+
+시작 직후 종료되면 `docker compose logs --tail=50 backend`를 확인합니다. `command_failed`의 `message`에는 잘못된 설정 이름, DB·Redis 연결 실패, APNs 키 파일 연결·권한 문제처럼 인증정보를 포함하지 않는 원인만 표시합니다. 드라이버·네트워크의 원문 오류와 설정 값은 출력하지 않습니다. APNs 설정이 있는 서버는 재시작 시에도 `APNS=1` 또는 `-f docker-compose.apns.yml`을 반드시 유지하세요.
+
 로컬 Go 개발은 PostgreSQL과 Redis를 실행한 뒤 다음 명령을 사용합니다.
 
 ```bash
@@ -206,7 +219,9 @@ make test-backend
 make test-backend-unit
 ```
 
-`test-backend`는 gofmt·go vet 검사 후 임시 PostgreSQL 17·Redis 7.4 컨테이너에서 `go test -race -count=1 -cover ./...`를 실행하고 컨테이너를 정리합니다. 테스트 DB 스키마도 실행마다 분리합니다. 실제 개발·운영 데이터는 사용하지 않습니다.
+`test-backend`는 `golang:1.26.1-bookworm` 컨테이너에서 gofmt·go vet 검사 후 `go test -race -count=1 -cover ./...`를 실행합니다. 호스트에 Go·gofmt·C 컴파일러를 설치할 필요가 없습니다. 임시 PostgreSQL 17·Redis 7.4를 별도 Docker 네트워크에서 실행하며 호스트 포트를 열지 않습니다. 테스트 후 컨테이너와 네트워크를 정리하고, 테스트 DB 스키마도 실행마다 분리합니다. 실제 개발·운영 데이터는 사용하지 않습니다.
+
+첫 실행은 Go 이미지와 모듈 다운로드 때문에 시간이 걸릴 수 있습니다. 이후 실행에서는 Docker 볼륨 `buswidget-test-gomod`와 `buswidget-test-gobuild`의 다운로드·빌드 캐시를 재사용합니다. 소스는 컨테이너에 읽기 전용으로 연결합니다. `test-backend-integration`도 같은 Docker 환경을 사용하며, `test-backend-unit`만 호스트 Go·C 컴파일러가 필요합니다.
 
 - 기존 Python 테스트 33개를 기준으로 Go 단위·통합 시나리오를 작성했습니다.
 - `internal/server/testdata/python_http.json`, `python_xml.json`은 기존 Python 구현의 고정 입력·출력입니다. 상태 코드, 응답 JSON, 관련 헤더와 개인정보처리방침 HTML을 비교합니다.

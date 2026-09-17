@@ -78,12 +78,12 @@ func Run(args []string) error {
 	defer stop()
 	poolConfig, err := pgxpool.ParseConfig(databaseURL(config.DatabaseURL))
 	if err != nil {
-		return fmt.Errorf("invalid DATABASE_URL")
+		return startupFailure("invalid DATABASE_URL")
 	}
 	poolConfig.ConnConfig.ConnectTimeout = 5 * time.Second
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
-		return fmt.Errorf("database initialization failed")
+		return startupFailure("database initialization failed")
 	}
 	defer pool.Close()
 	if command == "migrate" {
@@ -102,7 +102,7 @@ func Run(args []string) error {
 	}
 	redisOptions, err := redis.ParseURL(config.RedisURL)
 	if err != nil {
-		return fmt.Errorf("invalid REDIS_URL")
+		return startupFailure("invalid REDIS_URL")
 	}
 	redisOptions.MaxRetries = -1
 	redisClient := redis.NewClient(redisOptions)
@@ -110,10 +110,10 @@ func Run(args []string) error {
 	store := &RedisStore{redisClient, config.CacheTTL, config.RateRequests, config.RateWindow}
 	repository := &PostgresRepository{pool}
 	if err := repository.Ping(ctx); err != nil {
-		return fmt.Errorf("database connection failed")
+		return startupFailure("database connection failed")
 	}
 	if err := store.Ping(ctx); err != nil {
-		return err
+		return startupFailure("Redis connection failed")
 	}
 	// HTTPX applies the timeout to individual I/O phases, rather than the entire request.
 	transport := newTransport(config.HTTPTimeout)
