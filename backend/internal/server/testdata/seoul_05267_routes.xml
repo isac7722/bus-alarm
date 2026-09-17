@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceResult>
+  <msgHeader><headerCd>0</headerCd><headerMsg>정상적으로 처리되었습니다.</headerMsg></msgHeader>
+  <msgBody>
+    <itemList><busRouteId>100100570</busRouteId><busRouteNm>6705A</busRouteNm></itemList>
+    <itemList><busRouteId>122000006</busRouteId><busRouteNm>N6703</busRouteNm></itemList>
+    <itemList><busRouteId>100100212</busRouteId><busRouteNm>3212</busRouteNm></itemList>
+    <itemList><busRouteId>100100213</busRouteId><busRouteNm>3214</busRouteNm></itemList>
+    <itemList><busRouteId>234001203</busRouteId><busRouteNm>1113-10광주</busRouteNm></itemList>
+    <itemList><busRouteId>234001204</busRouteId><busRouteNm>1113-11광주</busRouteNm></itemList>
+    <itemList><busRouteId>234000011</busRouteId><busRouteNm>1113-1광주</busRouteNm></itemList>
+    <itemList><busRouteId>234001516</busRouteId><busRouteNm>1113-2광주</busRouteNm></itemList>
+    <itemList><busRouteId>234000042</busRouteId><busRouteNm>1113광주</busRouteNm></itemList>
+    <itemList><busRouteId>222000045</busRouteId><busRouteNm>112-1남양주</busRouteNm></itemList>
+    <itemList><busRouteId>234000082</busRouteId><busRouteNm>13-2광주</busRouteNm></itemList>
+    <itemList><busRouteId>234000072</busRouteId><busRouteNm>13광주</busRouteNm></itemList>
+    <itemList><busRouteId>234000050</busRouteId><busRouteNm>1650구리</busRouteNm></itemList>
+    <itemList><busRouteId>222000049</busRouteId><busRouteNm>1660남양주</busRouteNm></itemList>
+    <itemList><busRouteId>227000040</busRouteId><busRouteNm>9304하남</busRouteNm></itemList>
+    <itemList><busRouteId>234001712</busRouteId><busRouteNm>P9401(퇴근)광주</busRouteNm></itemList>
+    <itemList><busRouteId>234001714</busRouteId><busRouteNm>P9402(퇴근)광주</busRouteNm></itemList>
+    <itemList><busRouteId>234001716</busRouteId><busRouteNm>P9404(퇴근)광주</busRouteNm></itemList>
+  </msgBody>
+</ServiceResult>

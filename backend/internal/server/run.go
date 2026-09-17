@@ -122,6 +122,8 @@ func Run(args []string) error {
 	var client ArrivalClient = &SeoulClient{config, httpClient, time.Now, log}
 	if config.MockArrivals {
 		client = &MockClient{time.Now, log}
+	} else if config.GyeonggiAPIKey != "" {
+		client = &RegionalClient{Seoul: client.(*SeoulClient), Gyeonggi: &GyeonggiClient{Config: config, HTTP: httpClient, Cache: store, Now: time.Now, Log: log}, Repository: repository}
 	}
 	service := &Service{repository, store, client, log}
 	handler := &Handler{Config: config, Service: service, Limiter: store, Log: log}

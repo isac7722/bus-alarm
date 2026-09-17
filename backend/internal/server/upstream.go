@@ -42,8 +42,12 @@ func (c *SeoulClient) Fetch(ctx context.Context, id string, _ []Route) (Arrivals
 }
 
 func (c *SeoulClient) fetchBody(ctx context.Context, id string) ([]byte, error) {
+	return c.fetchStationBody(ctx, id, "getStationByUid")
+}
+
+func (c *SeoulClient) fetchStationBody(ctx context.Context, id, operation string) ([]byte, error) {
 	started := c.Now()
-	u, err := url.Parse(c.Config.APIBaseURL + "/getStationByUid")
+	u, err := url.Parse(c.Config.APIBaseURL + "/" + operation)
 	if err != nil {
 		return nil, upstreamError("버스 정보를 일시적으로 조회할 수 없습니다.")
 	}
@@ -158,13 +162,12 @@ func firstText(n xmlNode, paths ...[]string) string {
 var korea = time.FixedZone("KST", 9*3600)
 var remainingPattern = regexp.MustCompile(`\[(\d+)번째 전\]`)
 
-func ParseArrivals(body []byte, fetched time.Time) (ArrivalsResponse, error) {
-	out := ArrivalsResponse{UpdatedAt: stamp(fetched), FetchedAt: stamp(fetched), Arrivals: []RouteArrival{}}
+func decodeSeoulResponse(body []byte) (xmlNode, error) {
 	d := xml.NewDecoder(bytes.NewReader(body))
 	d.CharsetReader = charset.NewReaderLabel
 	var root xmlNode
 	if err := d.Decode(&root); err != nil {
-		return out, upstreamError("버스 정보 응답을 처리할 수 없습니다.")
+		return root, upstreamError("버스 정보 응답을 처리할 수 없습니다.")
 	}
 	for {
 		tok, err := d.Token()
@@ -172,20 +175,29 @@ func ParseArrivals(body []byte, fetched time.Time) (ArrivalsResponse, error) {
 			break
 		}
 		if err != nil {
-			return out, upstreamError("버스 정보 응답을 처리할 수 없습니다.")
+			return root, upstreamError("버스 정보 응답을 처리할 수 없습니다.")
 		}
 		switch v := tok.(type) {
 		case xml.StartElement:
-			return out, upstreamError("버스 정보 응답을 처리할 수 없습니다.")
+			return root, upstreamError("버스 정보 응답을 처리할 수 없습니다.")
 		case xml.CharData:
 			if strings.TrimSpace(string(v)) != "" {
-				return out, upstreamError("버스 정보 응답을 처리할 수 없습니다.")
+				return root, upstreamError("버스 정보 응답을 처리할 수 없습니다.")
 			}
 		}
 	}
 	code := firstText(root, []string{"msgHeader", "headerCd"}, []string{"headerCd"})
 	if code != "" && code != "0" {
-		return out, upstreamError("버스 정보를 일시적으로 조회할 수 없습니다.")
+		return root, upstreamError("버스 정보를 일시적으로 조회할 수 없습니다.")
+	}
+	return root, nil
+}
+
+func ParseArrivals(body []byte, fetched time.Time) (ArrivalsResponse, error) {
+	out := ArrivalsResponse{UpdatedAt: stamp(fetched), FetchedAt: stamp(fetched), Arrivals: []RouteArrival{}}
+	root, err := decodeSeoulResponse(body)
+	if err != nil {
+		return out, err
 	}
 	items := root.descendants("msgBody", "itemList")
 	if len(items) == 0 {

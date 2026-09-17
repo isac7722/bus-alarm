@@ -28,7 +28,7 @@ func (r *PostgresRepository) Get(ctx context.Context, id string) (*Station, erro
 }
 func (r *PostgresRepository) Search(ctx context.Context, keyword string) ([]Station, error) {
 	escaped := strings.NewReplacer("%", `\%`, "_", `\_`).Replace(keyword)
-	rows, err := r.Pool.Query(ctx, `SELECT station_id,node_id,name,longitude,latitude FROM stations WHERE name ILIKE $1 ESCAPE '\' ORDER BY (lower(name) LIKE lower($2)) DESC,length(name),name,station_id LIMIT 20`, "%"+escaped+"%", escaped+"%")
+	rows, err := r.Pool.Query(ctx, `SELECT station_id,node_id,name,longitude,latitude FROM stations WHERE name ILIKE $1 ESCAPE '\' OR station_id=$3 ORDER BY (station_id=$3) DESC,(lower(name) LIKE lower($2)) DESC,length(name),name,station_id LIMIT 20`, "%"+escaped+"%", escaped+"%", keyword)
 	if err != nil {
 		return nil, err
 	}

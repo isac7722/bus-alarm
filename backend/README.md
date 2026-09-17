@@ -32,10 +32,64 @@ go build -o bin/buswidget ./cmd/buswidget
 
 - `postgresql+asyncpg://` 형식의 기존 `DATABASE_URL`과 일반 `postgresql://` 형식을 모두 지원합니다.
 - 기존 `alembic_version=0001`과 테이블·인덱스·제약을 그대로 사용합니다. 마이그레이션은 빈 DB를 생성하고, 이미 적용된 DB는 변경하지 않습니다. 알 수 없는 revision은 실패합니다.
-- Redis의 `station:{station_id}:arrivals:{live|mock}`, `rate:{IP}` 키, JSON 값 및 TTL을 유지합니다.
+- Redis의 `station:{station_id}:arrivals:{live|mock}`, `rate:{IP}` 키, JSON 값 및 TTL을 유지합니다. 경기 연동은 기존 서울 캐시와 섞이지 않도록 `live-gbis-v1` 네임스페이스를 사용합니다.
 - 기본 `STATION_CATALOG_PATH`는 `../seoul_bus_statiosn.xlsx`입니다. 전체 검증 후 한 트랜잭션으로 카탈로그를 교체하며 실패 시 기존 데이터를 보존합니다.
 - `app/content/privacy.json`은 iOS가 함께 사용하는 원본입니다. Go 실행 파일에 임베드되므로 수정 후 재빌드해야 합니다. `/privacy`는 DB·캐시 조회 없이 응답합니다.
 - `/docs`, `/redoc`, `/openapi.json`은 제공하지 않습니다.
+
+## 정류장 경유노선 조회
+
+실제 서비스에서는 서울시 정류소정보조회 서비스의 `getRouteByStation`으로 경유노선을 조회합니다. 정류장 상세, 도착정보의 노선 검증, 실시간 현황 등록·갱신이 같은 목록을 사용합니다. 도착 예측이 없는 노선도 목록에 표시하며 서울시가 연계 제공하는 경기 노선도 포함합니다. `MOCK_ARRIVALS=true`일 때는 DB의 기존 노선 연결을 사용합니다.
+
+예를 들어 `05267` 테크노마트앞.강변역의 기존 엑셀에는 4개 노선만 있지만, 2026-09-17 실제 API에는 경기상운의 하남시 노선 `9304하남`(`227000040`)을 포함한 18개가 있었습니다. 전국 정류장 CSV에는 노선 정보가 없어 CSV 업데이트만으로는 이 누락을 해결할 수 없습니다.
+
+목록은 Redis의 `station:<정류장 ID>:routes:live`에 도착정보와 별도로 캐시하며 기존 캐시 TTL 설정(기본 30초)을 사용합니다. 외부 API 조회가 실패하면 오류를 반환합니다. 불완전한 엑셀 목록으로 대체하지 않습니다. DB 스키마 변경이나 노선 재수집 없이 백엔드를 재빌드하면 적용됩니다. 경기 API 키가 없을 때 지원 범위는 서울시 API가 제공하는 경유노선입니다.
+
+데이터 출처: [서울특별시 정류소정보조회 서비스](https://www.data.go.kr/data/15000303/openapi.do), [하남시 버스 노선 안내](https://www.hanam.go.kr/www/contents.do?key=5540). 경기도 원본 경유노선은 [GBIS 정류소 경유노선 조회](https://www.gbis.go.kr/gbis2014/publicService.action?cmd=mBusStationRoute), 도착정보는 [경기도 버스도착정보 조회](https://www.data.go.kr/data/15080346/openapi.do)에서도 제공합니다.
+
+## 경기버스 GBIS 직접 연동
+
+공공데이터포털에서 [경기도 정류소 조회](https://www.data.go.kr/data/15080666/openapi.do)와 [경기도 버스도착정보 조회](https://www.data.go.kr/data/15080346/openapi.do)를 모두 승인받고, `backend/.env`에 디코딩된 일반 인증키를 설정합니다. 같은 계정의 키를 사용하더라도 서비스별 활용 승인이 필요합니다.
+
+```dotenv
+GYEONGGI_BUS_API_KEY=승인받은_디코딩_인증키
+GYEONGGI_BUS_API_BASE_URL=https://apis.data.go.kr/6410000
+```
+
+키를 비워 두면 서울 단독 모드이며, `MOCK_ARRIVALS=true`는 두 외부 API를 모두 사용하지 않습니다. 실제 키는 Git에 넣지 않습니다. `GYEONGGI_BUS_API_BASE_URL`은 서비스별 `/busstationservice/v2` 또는 `/busarrivalservice/v2` 앞의 공통 주소입니다.
+
+| 기능 | GBIS v2 경로 |
+| --- | --- |
+| 정류소 이름·번호 검색 | `/busstationservice/v2/getBusStationListv2` |
+| 정류소 상세 | `/busstationservice/v2/busStationInfov2` |
+| 전체 경유노선 | `/busstationservice/v2/getBusStationViaRouteListv2` |
+| 도착정보 | `/busarrivalservice/v2/getBusArrivalListv2` |
+
+- 검색은 기존 DB 결과(최대 20개)와 경기 API 결과(최대 20개)를 합칩니다. 같은 노드 ID는 한 번만 표시합니다. 번호와 노드 ID가 모두 기존 DB와 같으면 기존 서울 ID를 유지합니다.
+- 서울 ARS와 경기 정류소 번호는 충돌할 수 있으므로 번호만으로 합치지 않습니다. DB에 없는 경기 정류소는 `gg:<9자리 stationId>`로 주소를 지정하며 표시 번호 `ars_id`와 구분합니다. DB 스키마 변경이나 경기 전체 CSV 적재는 필요하지 않습니다. 이름·번호 검색은 GBIS가 제공하는 정류소 범위를 따릅니다.
+- 기존 서울 정류소는 DB의 9자리 `node_id`로 경기 API도 조회하고, 서울·경기 경유노선을 노선 ID로 합칩니다. 경기 전용 정류소는 경기 API를 사용합니다. 두 API에 동시에 있는 노선명은 기존 서울 표기를 유지합니다.
+- GBIS 경유노선에 포함되는 노선의 도착정보는 GBIS를 사용합니다. 예측이 없다고 다른 공급자의 차량으로 전환하지 않습니다. 도착 예측이 없어도 경유노선 목록에서는 제거하지 않습니다.
+- GBIS의 초 단위 예측이 있으면 우선 사용하고, 없으면 분 단위를 초로 변환합니다. 운행 종료·회차 대기는 도착으로 처리하지 않습니다. 같은 노선이 정류소를 여러 번 경유하면 차량을 중복 제거하고 가까운 두 대를 표시합니다. 방향별 노선 선택은 제공하지 않습니다.
+- 검색·상세·경유노선 메타데이터와 도착정보를 Redis에 기본 30초간 캐시합니다. 목록·도착정보의 네임스페이스는 `live-gbis-v1`입니다. 인증 실패·외부 API 장애는 오류로 반환하며 부분 목록을 전체 목록처럼 제공하지 않습니다.
+- 실시간 현황에도 같은 노선·도착정보를 사용하고 GBIS 차량 ID는 서버 내부에서만 추적합니다. 앱의 API JSON 필드와 저장 형식은 동일합니다. `station_id`는 불투명한 문자열로 취급해야 합니다.
+
+기존 DB·Redis가 실행 중인 서버에서 소스와 `.env`를 반영한 뒤 백엔드만 재빌드합니다. `--no-deps`는 기존 엑셀 import 재실행으로 CSV 보강 내용이 덮이는 것을 방지합니다.
+
+```bash
+docker compose up -d --build --no-deps backend
+# APNs를 사용 중이라면 기존 추가 파일을 함께 적용:
+docker compose -f docker-compose.yml -f docker-compose.apns.yml up -d --build --no-deps backend
+
+curl --fail 'http://localhost:8000/api/v1/stations/search?q=05267'
+curl --fail 'http://localhost:8000/api/v1/stations/05267'
+curl --fail 'http://localhost:8000/api/v1/stations/05267/arrivals?route_ids=227000040'
+```
+
+승인 상태·End Point는 공공데이터포털의 **마이페이지 → 데이터 활용 → Open API → 활용신청 현황 → 해당 서비스 상세**에서 확인합니다. 인증 오류 `30`이면 해당 서비스 승인 상태와 키를 확인합니다. 도착정보 서비스 승인만으로 정류소 검색·경유노선 권한이 생기지는 않습니다.
+
+공식 명세: [정류소 검색](https://www.gbis.go.kr/gbis2014/publicService.action?cmd=mBusStation), [정류소 상세](https://www.gbis.go.kr/gbis2014/publicService.action?cmd=mBusStationInfo), [경유노선](https://www.gbis.go.kr/gbis2014/publicService.action?cmd=mBusStationRoute), [도착정보](https://www.gbis.go.kr/gbis2014/publicService.action?cmd=mBusArrivalStation).
+
+2026-09-17 승인된 키로 실제 Go 클라이언트·서비스를 검증했습니다. `05267` 검색은 강변역(`104000069`)과 성남 봉화터.군부대앞(`204000294`)을 구분하며, 강변역은 서울·경기 목록을 합쳐 중복 없이 18개 노선을 반환했습니다. 9304번의 두 대 도착 예측, 경기 전용 정류장의 상세·노선·도착정보, 실시간 현황용 스냅샷 조회도 성공했습니다. 운영 서버 배포와 실제 기기 APNs 전달을 검증한 것은 아닙니다.
 
 ## 전국 CSV로 서울·경기도 경유 정류장 보강
 
@@ -125,7 +179,7 @@ uv sync --locked --no-dev
 - 기존 정류장 삭제, ID 변경, `routes`·`route_stops` 변경은 하지 않습니다. CSV에서 빠진 기존 정류장은 유지합니다. 전체 작업은 한 트랜잭션으로 적용하며 오류가 발생하면 롤백합니다.
 - 기본 실행은 DB의 변경 예정 건수만 출력하고 롤백합니다. `--apply`로 적용 후 재실행하면 동일 데이터는 수정하지 않습니다.
 - CSV는 2025-10-31 시점의 위치정보입니다. 이후 변경된 이름·좌표를 되돌릴 수 있으므로 더 최신 자료가 반영된 DB에는 이 스냅샷을 사용하지 마세요. 기존 테이블에는 수집일이 없어 신구 비교를 자동으로 할 수 없습니다.
-- **새로 추가되는 정류장은 검색되지만, CSV에 노선 정보가 없어 노선 선택·알림 설정이 가능해지는 것은 아닙니다.** 노선 연결은 별도 데이터로 보강해야 합니다.
+- CSV에는 노선 정보가 없습니다. 실제 모드에서는 추가된 정류장의 경유노선을 서울시 API에서 조회하므로 해당 API가 지원하는 노선을 선택할 수 있습니다. mock 모드의 노선 연결은 별도 DB 데이터가 필요합니다.
 - 기존 `import-stations` 명령은 엑셀 기준으로 카탈로그 전체를 교체합니다. `make server` 등으로 다시 실행되면 CSV 보강 내용이 덮어써질 수 있으므로 엑셀 import 이후 이 스크립트를 다시 적용해야 합니다.
 - 기존 도착정보 캐시는 별도로 지우지 않으며 설정된 TTL에 따라 만료됩니다.
 

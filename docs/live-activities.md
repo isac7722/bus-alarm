@@ -73,6 +73,8 @@ docker compose -f docker-compose.yml -f docker-compose.apns.yml up --build -d ba
 
 POST와 DELETE에는 `Authorization: Bearer <64자리 무작위 hex>`가 필요합니다. 앱이 대기마다 보안 난수 32바이트를 생성하고 Keychain에 보관합니다. 이 값은 활동별 접근 권한이며, URL·활동 화면·요청 로그에 넣지 않습니다. 일반 APNs 기기 토큰이나 push-to-start 토큰이 아닌 **그 활동의 `pushToken`**을 등록해야 합니다.
 
+실제 모드의 노선 검증·갱신은 정류장 상세와 같은 경유노선 목록을 사용합니다. 서울시가 연계 제공하는 경기 노선도 등록할 수 있습니다. `GYEONGGI_BUS_API_KEY` 설정 시 GBIS 직접 조회도 사용하며 경기 전용 정류장의 `gg:<노드 ID>`를 그대로 등록할 수 있습니다. GBIS 차량 식별자는 서버 내부에서만 사용합니다. mock 모드에서는 기존 DB의 노선 연결을 사용합니다.
+
 POST 본문:
 
 ```json

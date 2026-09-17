@@ -31,7 +31,7 @@ func (r fakeRepo) Get(_ context.Context, id string) (*Station, error) {
 	if id != "22001" {
 		return nil, nil
 	}
-	return &Station{"22001", "121000001", "강남역", 127.0276, 37.4979}, nil
+	return &Station{StationID: "22001", NodeID: "121000001", Name: "강남역", Longitude: 127.0276, Latitude: 37.4979}, nil
 }
 func (r fakeRepo) Search(ctx context.Context, q string) ([]Station, error) {
 	s, err := r.Get(ctx, "22001")

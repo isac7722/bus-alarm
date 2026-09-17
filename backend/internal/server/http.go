@@ -159,6 +159,9 @@ func lastQuery(r *http.Request, key string) string {
 	return v[len(v)-1]
 }
 func stationIDValid(id string) bool {
+	if node, ok := strings.CutPrefix(id, "gg:"); ok {
+		return gbisNodeValid(node)
+	}
 	if utf8.RuneCountInString(id) != 5 {
 		return false
 	}

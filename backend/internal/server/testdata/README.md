@@ -9,3 +9,9 @@ Captured on 2026-09-15 from the pre-migration working tree, including the uncomm
 - `python_schema.sql`: schema exported from PostgreSQL after the original Alembic `0001` migration, with dump session directives and schema qualifiers removed to allow an isolated test schema.
 
 The Python source remains available in Git history; fixture updates require an intentional contract change. No Python interpreter is required to run the Go tests.
+
+The privacy fixture was also updated on 2026-09-17 for the GBIS integration: it now describes forwarding station searches to Gyeonggi and the Seoul/Gyeonggi service scope. Only those paragraphs and the effective date were changed.
+
+## Seoul serving-route regression fixture
+
+`seoul_05267_routes.xml` preserves the 18 route IDs and names observed from Seoul's `getRouteByStation` with `arsId=05267` on 2026-09-17. It is reduced to the response header and route identity fields; it contains no service key. The existing Excel catalog has only four routes for this station. In particular, Gyeonggi/Hanam route `9304하남` (`227000040`) is present in this fixture and was also observed in `getStationByUid` with a live arrival. Tests use a separate synthetic arrival response containing only that route to ensure routes without predictions remain selectable.

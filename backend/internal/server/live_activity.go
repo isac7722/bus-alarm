@@ -94,7 +94,7 @@ func (h *Handler) serveLive(w http.ResponseWriter, r *http.Request) int {
 		if _, err = h.Service.requireStation(r.Context(), registration.StationID); err != nil {
 			return h.writeError(w, err)
 		}
-		routes, routeErr := h.Service.Repository.Routes(r.Context(), registration.StationID)
+		routes, routeErr := h.Service.StationRoutes(r.Context(), registration.StationID)
 		if routeErr != nil {
 			return h.writeError(w, routeErr)
 		}
@@ -257,7 +257,7 @@ func (l *LiveActivities) process(ctx context.Context, key string, snapshots map[
 		if !ok {
 			// Separate from the worker lease: one stalled upstream must not exhaust it.
 			fetchCtx, stop := context.WithTimeout(ctx, 8*time.Second)
-			routes, routeErr := l.Service.Repository.Routes(fetchCtx, session.StationID)
+			routes, routeErr := l.Service.StationRoutes(fetchCtx, session.StationID)
 			if routeErr == nil {
 				snapshot, _ = l.Source.FetchLive(fetchCtx, session.StationID, routes)
 			}

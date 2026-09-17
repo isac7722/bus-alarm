@@ -1,10 +1,10 @@
 # BusWidget
 
-서울 버스 정류소를 검색하고 선택한 노선의 최대 2대 도착 정보를 iPhone 홈 화면 위젯에 표시하는 MVP입니다. 서울시 버스 API 키는 백엔드에만 저장하며, iPhone 앱과 위젯은 정규화된 Go API만 호출합니다. 현재 배포 대상은 iPhone이며 iPad, Mac Catalyst, Mac·Apple Vision에서의 네이티브 호환 배포는 지원 대상으로 설정하지 않습니다.
+서울·경기 버스 정류소를 검색하고 선택한 노선의 최대 2대 도착 정보를 iPhone 홈 화면 위젯에 표시하는 MVP입니다. 버스 API 키는 백엔드에만 저장하며, iPhone 앱과 위젯은 정규화된 Go API만 호출합니다. 경기 정류소 검색과 GBIS 직접 조회는 선택적 경기 API 설정으로 활성화합니다. 현재 배포 대상은 iPhone이며 iPad, Mac Catalyst, Mac·Apple Vision에서의 네이티브 호환 배포는 지원 대상으로 설정하지 않습니다.
 
 ## 구성
 
-- `backend/`: Go, PostgreSQL, Redis, SQL 마이그레이션, 서울시 XML API 어댑터
+- `backend/`: Go, PostgreSQL, Redis, SQL 마이그레이션, 서울시·GBIS XML API 어댑터
 - `ios/`: SwiftUI 앱, WidgetKit extension, 공유 App Group 저장소
 - `seoul_bus_statiosn.xlsx`: 정류소/노선 카탈로그 원본
 - `docker-compose.yml`: PostgreSQL 17, Redis 7.4, migration, catalog import, API
@@ -67,7 +67,7 @@ make stations-update ENV_FILE=backend/.env
 ```
 
 다른 CSV는 `CSV='/경로/정류장.csv'`, 이미 설정한 DB 환경변수는 `DB_ENV=DATABASE_URL`로 지정합니다.
-기존 정류장·노선 연결은 보존하지만 신규 정류장의 노선 연결은 별도로 필요합니다.
+기존 정류장·노선 연결은 보존합니다. 실제 서비스의 경유노선은 서울시 API에서 조회하며, mock 모드만 DB의 노선 연결을 사용합니다.
 DB 준비, 제외 기준, 기존 엑셀 import 재실행 시 주의점은 [백엔드 사용 안내](backend/README.md#전국-csv로-서울경기도-경유-정류장-보강)를 참고하세요.
 
 ## iOS 실행
@@ -111,7 +111,10 @@ GET /api/v1/stations/{station_id}
 GET /api/v1/stations/{station_id}/arrivals?route_ids=100100341,100100360
 ```
 
-- 도착 조회는 정류소당 서울시 `getStationByUid`를 한 번 호출하고 Redis에 기본 30초간 캐시한 뒤 노선을 필터링합니다.
+- 도착 조회는 서울시 `getStationByUid`, 경기 연동 시 GBIS `getBusArrivalListv2`를 호출하고 Redis에 기본 30초간 캐시한 뒤 노선을 필터링합니다.
+- 정류소의 노선 목록과 노선 선택 검증은 `getRouteByStation`의 전체 경유노선을 사용합니다. 서울시가 연계 제공하는 경기 노선과 도착 예측이 없는 노선도 포함하며, 목록은 도착정보와 별도로 기본 30초간 캐시합니다.
+- `backend/.env`에 `GYEONGGI_BUS_API_KEY`를 설정하면 경기 정류소 이름·번호 검색과 경유노선·도착정보 직접 조회를 추가합니다. 공공데이터포털의 **경기도 정류소 조회와 버스도착정보 조회** 두 서비스 승인이 필요합니다. [설정·배포 안내](backend/README.md#경기버스-gbis-직접-연동)를 참고하세요.
+- 기존 `station_id`는 5자리 ARS 번호를 유지하며, 경기 API에서 추가되는 정류소는 `gg:210000239`처럼 공급자와 9자리 노드 ID로 구분합니다. 검색 응답의 `station_id`를 그대로 상세·도착·실시간 현황 요청에 사용합니다.
 - `route_ids`는 쉼표 구분이며 중복 제거 후 최대 4개입니다.
 - 각 노선은 최대 2개의 예측을 `arrival_at`, `remaining_seconds`, `remaining_stops`, `vehicle_status`로 반환합니다.
 - API v1은 Redis 기반 IP 고정 윈도우 rate limit(기본 60회/60초)을 적용합니다.

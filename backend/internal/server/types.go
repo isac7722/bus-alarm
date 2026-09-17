@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type Station struct {
 	Name      string  `json:"name"`
 	Longitude float64 `json:"longitude"`
 	Latitude  float64 `json:"latitude"`
+	MobileNo  string  `json:"-"`
 }
 type StationSummary struct {
 	StationID string  `json:"station_id"`
@@ -36,8 +38,15 @@ type StationSummary struct {
 }
 
 func summary(s Station) StationSummary {
-	id := []rune(s.StationID)
-	return StationSummary{s.StationID, string(id[:2]) + "-" + string(id[2:]), s.Name, nil, s.Latitude, s.Longitude}
+	id := s.StationID
+	if strings.HasPrefix(id, "gg:") {
+		id = s.MobileNo
+	}
+	runes := []rune(id)
+	if len(runes) == 5 {
+		id = string(runes[:2]) + "-" + string(runes[2:])
+	}
+	return StationSummary{s.StationID, id, s.Name, nil, s.Latitude, s.Longitude}
 }
 
 type Route struct {

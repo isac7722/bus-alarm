@@ -185,6 +185,10 @@ func TestPostgresSearchOrdering(t *testing.T) {
 			t.Fatal(q, rows, err)
 		}
 	}
+	rows, err = r.Search(ctx, "00001")
+	if err != nil || len(rows) != 1 || rows[0].Name != "강남역" {
+		t.Fatal("station number search failed", rows, err)
+	}
 }
 func TestRedisCompatibility(t *testing.T) {
 	address := os.Getenv("TEST_REDIS_URL")

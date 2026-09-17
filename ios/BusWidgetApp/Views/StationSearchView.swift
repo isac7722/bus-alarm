@@ -12,7 +12,7 @@ struct StationSearchView: View {
                     ContentUnavailableView(
                         "정류소를 검색하세요",
                         systemImage: "magnifyingglass",
-                        description: Text("정류소 이름을 입력하면 서울 정류소를 찾아드립니다.")
+                        description: Text("정류소 이름이나 번호를 입력해 주세요.")
                     )
                 case .loading:
                     ProgressView("정류소를 찾는 중…")

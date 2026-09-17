@@ -16,7 +16,15 @@ type Service struct {
 }
 
 func (s *Service) requireStation(ctx context.Context, id string) (*Station, error) {
-	station, err := s.Repository.Get(ctx, id)
+	var station *Station
+	var err error
+	if strings.HasPrefix(id, "gg:") {
+		if client, ok := s.Client.(*RegionalClient); ok {
+			station, err = client.Gyeonggi.GetStation(ctx, strings.TrimPrefix(id, "gg:"))
+		}
+	} else {
+		station, err = s.Repository.Get(ctx, id)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +42,22 @@ func (s *Service) Search(ctx context.Context, q string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if client, ok := s.Client.(*RegionalClient); ok {
+		extra, err := client.SearchStations(ctx, q)
+		if err != nil {
+			return nil, err
+		}
+		seen := map[string]bool{}
+		for _, row := range rows {
+			seen[row.NodeID] = true
+		}
+		for _, row := range extra {
+			if !seen[row.NodeID] {
+				rows = append(rows, row)
+				seen[row.NodeID] = true
+			}
+		}
+	}
 	stations := []StationSummary{}
 	for _, row := range rows {
 		stations = append(stations, summary(row))
@@ -47,7 +71,7 @@ func (s *Service) Detail(ctx context.Context, id string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	routes, err := s.Repository.Routes(ctx, id)
+	routes, err := s.StationRoutes(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +99,7 @@ func (s *Service) Arrivals(ctx context.Context, id, routeIDs string) (ArrivalsRe
 		return empty, appError("INVALID_REQUEST", "노선은 최대 4개까지 요청할 수 있습니다.", 400)
 	}
 	if len(requested) > 0 {
-		routes, err := s.Repository.Routes(ctx, id)
+		routes, err := s.StationRoutes(ctx, id)
 		if err != nil {
 			return empty, err
 		}
@@ -102,7 +126,7 @@ func (s *Service) Arrivals(ctx context.Context, id, routeIDs string) (ArrivalsRe
 		}
 	} else {
 		s.Log.Info("arrival_cache_miss", "station_id", id, "action", "get_arrivals")
-		routes, err := s.Repository.Routes(ctx, id)
+		routes, err := s.StationRoutes(ctx, id)
 		if err != nil {
 			return empty, err
 		}
@@ -136,7 +160,7 @@ func (s *Service) Arrivals(ctx context.Context, id, routeIDs string) (ArrivalsRe
 		}
 	}
 	if len(missing) > 0 {
-		routes, err := s.Repository.Routes(ctx, id)
+		routes, err := s.StationRoutes(ctx, id)
 		if err != nil {
 			return empty, err
 		}
