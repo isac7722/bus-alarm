@@ -86,8 +86,10 @@ private struct WaitingCountdown: View {
         if !isStale, state.status == "waiting", let arrival = state.arrivalDate, arrival > .now {
             HStack(spacing: 5) {
                 if !compact { Text("도착까지") }
+                // WidgetKit's timer needs the proposed width. fixedSize() can
+                // produce unbounded frames and blank the entire Live Activity.
                 Text(timerInterval: Date.now...arrival, countsDown: true)
-                    .monospacedDigit().fixedSize()
+                    .monospacedDigit()
             }
         } else {
             Text(compact ? compactMessage : state.message(isStale: isStale))
