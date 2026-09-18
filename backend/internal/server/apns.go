@@ -75,11 +75,23 @@ func (a *APNsClient) token(now time.Time) (string, error) {
 	return a.jwt, nil
 }
 func livePayload(session LiveSession, now time.Time) []byte {
-	staleAt := now.Add(90 * time.Second).Unix()
-	if session.Content.Status == "waiting" {
-		staleAt = min(staleAt, int64(session.Content.UpdatedAt)+90)
+	// The first future ETA schedules the next time-dependent presentation change.
+	// Source age never hides a still-running countdown.
+	staleAt := session.ExpiresAt
+	contents := []LiveContent{session.Content}
+	for _, route := range session.Content.Routes {
+		contents = append(contents, route.Content)
 	}
-	aps := map[string]any{"timestamp": now.Unix(), "event": "update", "content-state": session.Content, "stale-date": staleAt}
+	for _, c := range contents {
+		if c.Status == "waiting" && c.ArrivalAt != nil && *c.ArrivalAt > float64(now.Unix()) && (staleAt == 0 || int64(*c.ArrivalAt) < staleAt) {
+			staleAt = int64(*c.ArrivalAt)
+		}
+	}
+	aps := map[string]any{"timestamp": now.Unix(), "event": "update", "content-state": session.Content}
+	if staleAt > now.Unix() {
+		aps["stale-date"] = staleAt
+	}
+
 	if session.Ended {
 		aps["event"] = "end"
 		aps["dismissal-date"] = now.Add(time.Minute).Unix()
@@ -127,5 +139,41 @@ func (a *APNsClient) Push(ctx context.Context, session LiveSession) (bool, error
 	if response.StatusCode == 410 || response.StatusCode == 400 && (detail.Reason == "BadDeviceToken" || detail.Reason == "DeviceTokenNotForTopic") {
 		return true, nil
 	}
-	return false, fmt.Errorf("APNs rejected push (HTTP %d)", response.StatusCode)
+	return false, &pushResponseError{Status: response.StatusCode, Reason: detail.Reason}
+}
+
+// Transport errors use short retries. APNs rejections require status-specific recovery.
+type pushResponseError struct {
+	Status int
+	Reason string
+}
+
+func (e *pushResponseError) Error() string {
+	return fmt.Sprintf("APNs rejected push (HTTP %d, %s)", e.Status, e.Reason)
+}
+func (s *LiveSession) schedulePush(now time.Time, err error) {
+	s.NextPushAt = now.Add(10 * time.Second).Unix()
+	if err == nil {
+		s.PushRetry = 0
+		return
+	}
+	if rejection, ok := err.(*pushResponseError); ok {
+		s.PushRetry = 0
+		switch {
+		case rejection.Status >= 500:
+			s.NextPushAt = now.Add(15 * time.Minute).Unix()
+		case rejection.Status == 429:
+			s.NextPushAt = now.Add(time.Minute).Unix()
+		default:
+			s.NextPushAt = now.Add(15 * time.Minute).Unix()
+		}
+		return
+	}
+	delays := []time.Duration{time.Second, 3 * time.Second, 5 * time.Second}
+	if s.PushRetry < len(delays) {
+		s.NextPushAt = now.Add(delays[s.PushRetry]).Unix()
+		s.PushRetry++
+	} else {
+		s.PushRetry = 0
+	}
 }

@@ -16,6 +16,7 @@ type LiveRouteContent struct {
 }
 
 type LiveContent struct {
+	Revision       int64              `json:"revision,omitempty"`
 	Routes         []LiveRouteContent `json:"routes,omitempty"`
 	Status         string             `json:"status"`
 	ArrivalAt      *float64           `json:"arrivalAt"`
@@ -89,6 +90,8 @@ type LiveSession struct {
 	PushToken     string             `json:"push_token"`
 	Environment   string             `json:"environment"`
 	ExpiresAt     int64              `json:"expires_at"`
+	NextRefreshAt int64              `json:"next_refresh_at"`
+	PushRetry     int                `json:"push_retry"`
 	NextPushAt    int64              `json:"next_push_at"`
 	VehicleID     string             `json:"vehicle_id"`
 	LastSeenAt    int64              `json:"last_seen_at"`
@@ -108,7 +111,10 @@ func (s *LiveSession) advance(snapshot LiveSnapshot, now time.Time) {
 	}
 	// An old prediction must never turn into an assertion that the bus arrived.
 	if snapshot.UpdatedAt.IsZero() || now.Sub(snapshot.UpdatedAt) > 90*time.Second || snapshot.UpdatedAt.After(now.Add(30*time.Second)) {
-		s.Content = LiveContent{Status: "unavailable", UpdatedAt: float64(now.Unix())}
+		// Transport failure or an old source snapshot must not erase the last ETA.
+		if s.Content.Status == "" {
+			s.Content = LiveContent{Status: "unavailable"}
+		}
 		return
 	}
 	if s.LastSeenAt > 0 && snapshot.UpdatedAt.Unix() < s.LastSeenAt {

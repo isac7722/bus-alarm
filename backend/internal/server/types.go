@@ -70,10 +70,12 @@ type ArrivalStation struct {
 	Name      string `json:"name"`
 }
 type ArrivalsResponse struct {
-	Station   ArrivalStation `json:"station"`
-	UpdatedAt Timestamp      `json:"updated_at"`
-	FetchedAt Timestamp      `json:"fetched_at"`
-	Arrivals  []RouteArrival `json:"arrivals"`
+	RouteUpdatedAt map[string]Timestamp `json:"route_updated_at,omitempty"`
+	FailedRouteIDs []string             `json:"failed_route_ids,omitempty"`
+	Station        ArrivalStation       `json:"station"`
+	UpdatedAt      Timestamp            `json:"updated_at"`
+	FetchedAt      Timestamp            `json:"fetched_at"`
+	Arrivals       []RouteArrival       `json:"arrivals"`
 }
 type AppError struct {
 	Code    string `json:"code"`

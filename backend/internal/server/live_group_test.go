@@ -31,10 +31,10 @@ func TestLiveGroupContinuesAfterFirstArrival(t *testing.T) {
 	if s.Ended || s.Content.Routes[0].Content.Status != "arrived" || *s.Content.ArrivalAt != float64(now.Add(3*time.Minute).Unix()) {
 		t.Fatal(s)
 	}
-	// Losing the remaining prediction is a delay, never a group arrival.
+	// A transport outage keeps the remaining last-known countdown.
 	s.Routes[1].advance(LiveSnapshot{}, now)
 	s.aggregate(now)
-	if s.Ended || s.Content.Status != "unavailable" || s.Content.ArrivalAt != nil {
+	if s.Ended || s.Content.Status != "waiting" || s.Content.ArrivalAt == nil {
 		t.Fatal(s)
 	}
 	// Expiry remains terminal even with unavailable routes.
@@ -81,6 +81,10 @@ func TestLiveGroupRegistrationRotationWorkerAndCancel(t *testing.T) {
 	client := liveTestRedis(t)
 	ctx := context.Background()
 	h := testHandler()
+	// The station snapshot is shared across workers in production, but each fixture owns its feed.
+	snapshotKey := "liveactivity:snapshot:" + h.Service.Client.Namespace() + ":22001"
+	client.Del(ctx, snapshotKey)
+	t.Cleanup(func() { client.Del(ctx, snapshotKey) })
 	now := time.Now().Truncate(time.Second)
 	source := &fakeLiveSource{snapshot: LiveSnapshot{now, map[string][]LiveBus{
 		"100100341": {liveBus(now, "bus-a", 180)}, "100100360": {liveBus(now, "bus-b", 60)},
@@ -191,13 +195,13 @@ func TestLiveGroupDoesNotExtendSourceFreshness(t *testing.T) {
 		APS map[string]any `json:"aps"`
 	}
 	json.Unmarshal(livePayload(s, now), &payload)
-	if payload.APS["stale-date"] != old+90 {
-		t.Fatal("group extended source freshness", payload)
+	if payload.APS["stale-date"] != at {
+		t.Fatal("next presentation boundary must be the ETA", payload)
 	}
-	// A stale row must not drive the summary even if its ETA is sooner.
+	// Source age is preserved even while an old ETA remains visible.
 	s.Routes[0].Content.UpdatedAt = old - 60
 	s.aggregate(now)
-	if s.Content.UpdatedAt != float64(now.Unix()) {
+	if s.Content.UpdatedAt != old-60 {
 		t.Fatal(s.Content)
 	}
 }

@@ -19,6 +19,7 @@
 		27FB93C4ED828237D618D89F /* RouteCatalogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31040BF1C7BF838879B3F158 /* RouteCatalogModels.swift */; };
 		29D5702D8FA3F3EC6692CA18 /* StationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555302F7156C337CA92933A1 /* StationModels.swift */; };
 		2A205E4D58AB6462D5ACE6F8 /* RouteCatalogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31040BF1C7BF838879B3F158 /* RouteCatalogModels.swift */; };
+		2FE48CBB6B98543C4B355DAA /* ArrivalPolling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6D66A72A0068DA3AEDD7B0 /* ArrivalPolling.swift */; };
 		3241098139C71D27E45E993F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F17496460C5C3962538E977F /* Assets.xcassets */; };
 		37E9C5BDEC9E117335BF2C20 /* BusWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D17C097AEA35D691DA2BDBE /* BusWidgetApp.swift */; };
 		39ACC70EDE85FD4D9E785646 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3F869EBA32B366FCC556CF31 /* PrivacyInfo.xcprivacy */; };
@@ -39,6 +40,7 @@
 		918E6EDE712AB83528DECA38 /* StationFinderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08A6EE3C708AAB1801EE72CD /* StationFinderViewModel.swift */; };
 		96C14E5801CC5609C16B7CE1 /* NMapsMap in Frameworks */ = {isa = PBXBuildFile; productRef = 395E87FC1F31E9DC670EFE6F /* NMapsMap */; };
 		9742383F25D4F555AFBB181D /* FavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C62B4667350328DBEA2C7042 /* FavoritesView.swift */; };
+		99FBD65D6FB2FCA4A7666E1E /* ArrivalRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFD5B41B883375855AE72D0 /* ArrivalRepositoryTests.swift */; };
 		9A969DA4D115CF0942429138 /* LiveWaitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B2A33EB61F9E2C50B6A728 /* LiveWaitStore.swift */; };
 		9D80176E9F1BBC3384DAE1F3 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600AA69C0FD569783A53DF73 /* AppGroupStore.swift */; };
 		9E78124E10045E0D61C86D6B /* BusWaitingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */; };
@@ -51,6 +53,7 @@
 		C279E59E3307E7E9BAE64F03 /* TransitColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF2654F694EC708E1F502B5 /* TransitColors.swift */; };
 		C3F4A753AD37593421E6E083 /* BusWaitingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */; };
 		C679C39C3892E317A99266CF /* LiveActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 541F3465A5201E83CFF1ED3A /* LiveActivityTests.swift */; };
+		C6EEF3838E4F6EB6F702E89D /* ArrivalRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830206F1EDCDB2AA4C5A3FED /* ArrivalRepository.swift */; };
 		C8509F24DB0241F1D8DE81EF /* privacy.json in Resources */ = {isa = PBXBuildFile; fileRef = 6F4E55AAB28C80DE01F0D837 /* privacy.json */; };
 		C98E5EFC5ECD5D6878F2300A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AF80DA32639A2AC5438D91 /* APIClient.swift */; };
 		CDF38024522D7B0FCF32E8EF /* SavedStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E88597FF98C918F6D0B3B0 /* SavedStop.swift */; };
@@ -107,6 +110,7 @@
 		159A9C3F49B7138D08908BBC /* BusWidgetTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BusWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		19CCCBD346A7701F785328DF /* RouteMapUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapUITests.swift; sourceTree = "<group>"; };
 		21CB4E310200418692219ABB /* RouteMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapTests.swift; sourceTree = "<group>"; };
+		2C6D66A72A0068DA3AEDD7B0 /* ArrivalPolling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalPolling.swift; sourceTree = "<group>"; };
 		2E47E81167DE17FC3261C155 /* TransitMarkerLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitMarkerLayout.swift; sourceTree = "<group>"; };
 		2F5C2F1662C871764E78C928 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		30170C678794366A4BB8C097 /* BusWidgetApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BusWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -129,6 +133,7 @@
 		79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingView.swift; sourceTree = "<group>"; };
 		7BE713BF2BBFC5A056AEB044 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		7D17C097AEA35D691DA2BDBE /* BusWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetApp.swift; sourceTree = "<group>"; };
+		830206F1EDCDB2AA4C5A3FED /* ArrivalRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalRepository.swift; sourceTree = "<group>"; };
 		841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingManager.swift; sourceTree = "<group>"; };
 		8EF2654F694EC708E1F502B5 /* TransitColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitColors.swift; sourceTree = "<group>"; };
 		9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
@@ -146,6 +151,7 @@
 		DA4EEACB98E9637888D21A94 /* StationBusSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationBusSelectionView.swift; sourceTree = "<group>"; };
 		E129FF1BED402910B0E942C6 /* BusWaitingLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingLiveActivity.swift; sourceTree = "<group>"; };
 		E97445AFE2C15E5823EC22DF /* BusWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BusWidgetExtension.entitlements; sourceTree = "<group>"; };
+		ECFD5B41B883375855AE72D0 /* ArrivalRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalRepositoryTests.swift; sourceTree = "<group>"; };
 		F17496460C5C3962538E977F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FA8442A7D2DC39C2395BA536 /* BusWaitingAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingAttributes.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -228,6 +234,7 @@
 			isa = PBXGroup;
 			children = (
 				9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */,
+				2C6D66A72A0068DA3AEDD7B0 /* ArrivalPolling.swift */,
 				79E0599F49C4532943B7F1C2 /* BusWaitingView.swift */,
 				C62B4667350328DBEA2C7042 /* FavoritesView.swift */,
 				B276513ED7B006E59422E0A3 /* NaverTransitMap.swift */,
@@ -257,6 +264,7 @@
 		5DB66BB7F6BC948B21E600CF /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				830206F1EDCDB2AA4C5A3FED /* ArrivalRepository.swift */,
 				841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */,
 				32B2A33EB61F9E2C50B6A728 /* LiveWaitStore.swift */,
 			);
@@ -267,6 +275,7 @@
 			isa = PBXGroup;
 			children = (
 				4E514757809D77C8206C450C /* AppGroupStoreTests.swift */,
+				ECFD5B41B883375855AE72D0 /* ArrivalRepositoryTests.swift */,
 				541F3465A5201E83CFF1ED3A /* LiveActivityTests.swift */,
 				C2B17D35D3DDF80BB1FCCF15 /* ModelsTests.swift */,
 				21CB4E310200418692219ABB /* RouteMapTests.swift */,
@@ -553,6 +562,8 @@
 				A24C67E7439E86EBA964C36E /* AppTheme.swift in Sources */,
 				7D99E7DB964A98D58FE6BE38 /* ArrivalCountdownFormatter.swift in Sources */,
 				E3AFB62AAE7C2D295BE473AB /* ArrivalModels.swift in Sources */,
+				2FE48CBB6B98543C4B355DAA /* ArrivalPolling.swift in Sources */,
+				C6EEF3838E4F6EB6F702E89D /* ArrivalRepository.swift in Sources */,
 				55E7A6951F567D85DE4957C3 /* BusWaitingAttributes.swift in Sources */,
 				9E78124E10045E0D61C86D6B /* BusWaitingManager.swift in Sources */,
 				C3F4A753AD37593421E6E083 /* BusWaitingView.swift in Sources */,
@@ -582,6 +593,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				736094BD015288BBD50966EB /* AppGroupStoreTests.swift in Sources */,
+				99FBD65D6FB2FCA4A7666E1E /* ArrivalRepositoryTests.swift in Sources */,
 				C679C39C3892E317A99266CF /* LiveActivityTests.swift in Sources */,
 				1E9384692EEA7C24B9D4A8B5 /* ModelsTests.swift in Sources */,
 				1C18B596B7EC3F6F409E8ED3 /* RouteMapTests.swift in Sources */,
@@ -645,7 +657,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = K5M43RRH97;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -659,7 +671,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -806,7 +818,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = K5M43RRH97;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -826,7 +838,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

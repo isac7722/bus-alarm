@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -112,6 +113,9 @@ func (h *Handler) serveLiveGroup(w http.ResponseWriter, r *http.Request, key str
 				}
 			}
 		}
+		if current.Content.Revision == 0 {
+			current.Content.Revision = time.Now().UnixMilli()
+		}
 		current.PushToken = strings.ToLower(registration.PushToken)
 		return nil
 	}, &session)
@@ -145,7 +149,31 @@ func (l *LiveActivities) snapshot(ctx context.Context, session LiveSession, snap
 		} else {
 			routes, err := l.Service.StationRoutes(fetchCtx, session.StationID)
 			if err == nil {
-				snapshot, _ = l.Source.FetchLive(fetchCtx, session.StationID, routes)
+				call := l.snapshots.DoChan(session.StationID, func() (any, error) {
+					// Work has its own bounded lifetime so one cancelled caller cannot cancel peers.
+					sourceCtx, done := context.WithTimeout(context.WithoutCancel(ctx), 4*time.Second)
+					defer done()
+					cacheKey := "liveactivity:snapshot:" + l.Service.Client.Namespace() + ":" + session.StationID
+					if raw, err := l.Redis.Get(sourceCtx, cacheKey).Bytes(); err == nil {
+						var cached LiveSnapshot
+						if json.Unmarshal(raw, &cached) == nil {
+							return cached, nil
+						}
+					}
+					result, err := l.Source.FetchLive(sourceCtx, session.StationID, routes)
+					if err == nil {
+						raw, _ := json.Marshal(result)
+						l.Redis.Set(sourceCtx, cacheKey, raw, 5*time.Second)
+					}
+					return result, err
+				})
+				select {
+				case <-fetchCtx.Done():
+				case result := <-call:
+					if result.Err == nil {
+						snapshot = result.Val.(LiveSnapshot)
+					}
+				}
 			}
 		}
 	}
@@ -155,15 +183,16 @@ func (l *LiveActivities) snapshot(ctx context.Context, session LiveSession, snap
 
 // Individual vehicles finish independently; the activity ends only after all do.
 func (s *LiveSession) aggregate(now time.Time) {
-	content := LiveContent{Status: "unavailable", UpdatedAt: float64(now.Unix())}
+	content := LiveContent{Status: "unavailable"}
 	allEnded := true
 	for _, child := range s.Routes {
 		content.Routes = append(content.Routes, LiveRouteContent{child.RouteID, child.Content})
 		allEnded = allEnded && child.Ended
 		c := child.Content
-		if !child.Ended && c.Status == "waiting" && c.ArrivalAt != nil && *c.ArrivalAt > float64(now.Unix()) && float64(now.Unix())-c.UpdatedAt <= 90 {
-			// The system stale-date must not extend any displayed prediction's freshness.
-			content.UpdatedAt = min(content.UpdatedAt, c.UpdatedAt)
+		if !child.Ended && c.UpdatedAt > 0 && (content.UpdatedAt == 0 || c.UpdatedAt < content.UpdatedAt) {
+			content.UpdatedAt = c.UpdatedAt
+		}
+		if !child.Ended && c.Status == "waiting" && c.ArrivalAt != nil && *c.ArrivalAt > float64(now.Unix()) {
 			if content.ArrivalAt == nil || *c.ArrivalAt < *content.ArrivalAt {
 				content.Status, content.ArrivalAt, content.RemainingStops = "waiting", c.ArrivalAt, c.RemainingStops
 			}
@@ -171,9 +200,11 @@ func (s *LiveSession) aggregate(now time.Time) {
 	}
 	if now.Unix() >= s.ExpiresAt {
 		content.Status, content.ArrivalAt, content.RemainingStops = "expired", nil, nil
+		content.UpdatedAt = float64(now.Unix())
 		s.Ended = true
 	} else if allEnded {
 		content.Status = "finished"
+		content.UpdatedAt = float64(now.Unix())
 		s.Ended = true
 	}
 	s.Content = content

@@ -38,6 +38,7 @@ struct FavoritesView: View {
                     ForEach(favorites.items) { favorite in
                         FavoriteCard(favorite: favorite,
                             highlighted: favorites.saveNotice?.favoriteID == favorite.id,
+                            refreshEnabled: path.isEmpty,
                             showDetail: { path.append(FavoriteDestination(favorite: favorite)) },
                             start: { path.append(FavoriteDestination(favorite: favorite, autoStart: true)) })
                             .id(favorite.id)
@@ -112,7 +113,10 @@ private struct FavoriteCard: View {
     @EnvironmentObject private var favorites: FavoritesStore
     @EnvironmentObject private var waiting: BusWaitingManager
     let favorite: SavedStop
+    @StateObject private var arrivals = CommuteArrivalsModel()
+    @State private var visible = false
     let highlighted: Bool
+    let refreshEnabled: Bool
     let showDetail: () -> Void
     let start: () -> Void
 
@@ -136,11 +140,18 @@ private struct FavoriteCard: View {
                         }
                         RouteBadgeLayout {
                             ForEach(favorite.displayRoutes) { route in
-                                Text(route.routeName).font(.subheadline.weight(.semibold)).monospacedDigit()
-                                    .padding(.horizontal, 12).padding(.vertical, 8)
-                                    .foregroundStyle(AppTheme.text)
-                                    .background(AppTheme.background, in: RoundedRectangle(cornerRadius: 8))
-                                    .accessibilityLabel("\(route.routeName)번 버스")
+                                TimelineView(.periodic(from: .now, by: 1)) { context in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(route.routeName).font(.subheadline.weight(.semibold))
+                                        Text(arrivals.label(route.routeId, at: context.date))
+                                            .font(.caption).foregroundStyle(AppTheme.action)
+                                            .frame(minWidth: 70, alignment: .leading)
+                                    }.monospacedDigit()
+                                        .padding(.horizontal, 12).padding(.vertical, 8)
+                                        .foregroundStyle(AppTheme.text)
+                                        .background(AppTheme.background, in: RoundedRectangle(cornerRadius: 8))
+                                        .accessibilityElement(children: .combine)
+                                }
                             }
                         }.padding(.top, 4)
                         Label("도착정보 · 버스 선택", systemImage: "chevron.right")
@@ -148,7 +159,7 @@ private struct FavoriteCard: View {
                     }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(.plain)
                  .accessibilityIdentifier("favorite.\(favorite.id)")
-                 .accessibilityHint("도착정보를 확인하고 오늘 기다릴 버스를 선택합니다.")
+                 .accessibilityHint("등록된 버스의 도착정보를 확인하고 전체 대기를 시작할 수 있습니다.")
                 Menu {
                     Button("도착정보 · 버스 선택", action: showDetail)
                     Button("삭제", role: .destructive) { favorites.delete(favorite) }
@@ -176,6 +187,8 @@ private struct FavoriteCard: View {
         .padding(20).frame(maxWidth: .infinity, alignment: .leading).transitCard()
         .overlay(RoundedRectangle(cornerRadius: AppTheme.cardRadius)
             .strokeBorder(highlighted ? AppTheme.action : Color.clear, lineWidth: 2))
+        .onAppear { visible = true }.onDisappear { visible = false }
+        .arrivalPolling(arrivals, configuration: favorite.configuration, visible: visible && refreshEnabled)
     }
 }
 
@@ -214,7 +227,6 @@ struct FavoriteDetailView: View {
     @StateObject private var arrivals = CommuteArrivalsModel()
     let favorite: SavedStop
     var autoStart = false
-    @State private var selected: Set<String>
     @State private var routes: [RouteSummary]
     @State private var edit = false
     @State private var rename = false
@@ -225,7 +237,6 @@ struct FavoriteDetailView: View {
 
     init(favorite: SavedStop, autoStart: Bool = false) {
         self.favorite = favorite; self.autoStart = autoStart
-        _selected = State(initialValue: Set(favorite.configuration.routeIds))
         _routes = State(initialValue: favorite.displayRoutes)
     }
     private var stored: SavedStop? {
@@ -233,6 +244,9 @@ struct FavoriteDetailView: View {
     }
     private var value: SavedStop { stored ?? favorite }
     private var configuration: WidgetConfigurationData { value.configuration }
+    private var allRoutesLoaded: Bool {
+        !configuration.routeIds.isEmpty && Set(routes.map(\.routeId)) == Set(configuration.routeIds)
+    }
 
     var body: some View {
         List {
@@ -240,54 +254,39 @@ struct FavoriteDetailView: View {
                 StationSummaryView(name: configuration.stationName,
                     number: configuration.displayNumber ?? configuration.stationId, nickname: value.nickname)
             }.listRowBackground(AppTheme.surface)
-            Section("오늘 기다릴 버스 · \(selected.count)개") {
+            Section("기다릴 버스 · \(configuration.routeIds.count)개") {
                 if let routeError { Text(routeError); Button("다시 시도") { Task { await loadRoutes() } }.foregroundStyle(AppTheme.action) }
                 TimelineView(.periodic(from: .now, by: 10)) { context in
-                    let fastest = routes.filter { selected.contains($0.routeId) }.compactMap { route -> (String, Date)? in
-                        arrivals.upcoming(route.routeId, at: context.date).map { (route.routeId, $0) }
-                    }.min { $0.1 < $1.1 }?.0
                     ForEach(routes) { route in
-                        Button {
-                            if selected.contains(route.routeId) { selected.remove(route.routeId) } else { selected.insert(route.routeId) }
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ViewThatFits(in: .horizontal) {
-                                    HStack(spacing: 12) {
-                                        routeSelectionLabel(route)
-                                        Spacer(minLength: 8)
-                                        Text(arrivals.label(route.routeId, at: context.date)).monospacedDigit()
-                                            .font(.body.weight(.medium)).fixedSize()
-                                    }
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        routeSelectionLabel(route)
-                                        Text(arrivals.label(route.routeId, at: context.date)).monospacedDigit()
-                                            .font(.body.weight(.medium))
-                                    }
+                        VStack(alignment: .leading, spacing: 6) {
+                            ViewThatFits(in: .horizontal) {
+                                HStack(spacing: 12) {
+                                    routeLabel(route)
+                                    Spacer(minLength: 8)
+                                    Text(arrivals.label(route.routeId, at: context.date)).monospacedDigit()
+                                        .font(.body.weight(.medium)).fixedSize()
                                 }
-                                if let direction = configuration.selections?.first(where: { $0.routeRef == route.routeId })?.direction {
-                                    Text(direction).font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    routeLabel(route)
+                                    Text(arrivals.label(route.routeId, at: context.date)).monospacedDigit()
+                                        .font(.body.weight(.medium))
                                 }
-                                if fastest == route.routeId { Label("선택한 버스 중 가장 먼저 도착", systemImage: "timer").font(.caption).foregroundStyle(AppTheme.primary) }
-                            }.padding(.vertical, 6).frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
-                        }.buttonStyle(.plain).disabled(waiting.isBusy)
+                            }
+                            if let direction = configuration.selections?.first(where: { $0.routeRef == route.routeId })?.direction {
+                                Text(direction).font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                            }
+                        }.padding(.vertical, 6).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                         .accessibilityElement(children: .combine)
                          .accessibilityIdentifier("waiting-route.\(route.routeId)")
-                         .accessibilityAddTraits(selected.contains(route.routeId) ? .isSelected : [])
-                         .accessibilityValue(selected.contains(route.routeId) ? "선택됨" : "선택 안 됨")
                     }
                 }
-                Text("오늘의 선택은 즐겨찾기에 저장된 버스를 바꾸지 않습니다.").font(.footnote).foregroundStyle(AppTheme.secondaryText)
-                if let response = arrivals.response {
-                    Text("마지막 확인 \(response.updatedAt.formatted(date: .omitted, time: .standard))").font(.caption).foregroundStyle(AppTheme.secondaryText)
-                }
-                if let error = arrivals.error { Text(error).font(.callout); Button("도착정보 다시 확인") { Task { await arrivals.refresh(configuration) } }.foregroundStyle(AppTheme.action) }
+                if let error = arrivals.error, arrivals.response == nil { Text(error).font(.callout); Button("도착정보 다시 확인") { Task { await arrivals.refresh(configuration) } }.foregroundStyle(AppTheme.action) }
             }.listRowBackground(AppTheme.surface)
             Section {
                 if waiting.activity != nil {
                     Button("현재 대기 보기", systemImage: "bus.fill") { showWaiting = true }
                         .foregroundStyle(AppTheme.action)
-                    Text("다른 조합을 기다리려면 현재 대기를 먼저 종료해 주세요.").font(.footnote).foregroundStyle(AppTheme.secondaryText)
                 }
-                if let error = waiting.errorMessage { Text(error).font(.callout).foregroundStyle(AppTheme.secondaryText) }
                 Button {
                     var current = value; current.routes = routes
                     if favorites.save(current) { favorites.announceSave(current) }
@@ -296,8 +295,17 @@ struct FavoriteDetailView: View {
                 if stored != nil {
                     Button("정류장·버스 변경", systemImage: "pencil") { edit = true }.foregroundStyle(AppTheme.action)
                 }
-                if let error = favorites.error { Text(error); Button("저장 상태 다시 확인") { favorites.reload() }.foregroundStyle(AppTheme.action) }
             }.listRowBackground(AppTheme.surface)
+            if let error = favorites.error {
+                Section {
+                    Text(error)
+                    Button("저장 상태 다시 확인") { favorites.reload() }.foregroundStyle(AppTheme.action)
+                }.listRowBackground(AppTheme.surface)
+            }
+            if let error = waiting.errorMessage {
+                Section { Text(error).font(.callout).foregroundStyle(AppTheme.secondaryText) }
+                    .listRowBackground(AppTheme.surface)
+            }
         }
         .transitList()
         .navigationTitle("버스 기다리기")
@@ -316,9 +324,9 @@ struct FavoriteDetailView: View {
             Button { Task { await start() } } label: {
                 Group {
                     if waiting.isBusy { ProgressView("대기 시작 중…") }
-                    else { Text(selected.isEmpty ? "기다릴 버스를 선택하세요" : "\(selected.count)개 버스 기다리기") }
+                    else { Text("\(configuration.routeIds.count)개 버스 기다리기") }
                 }.frame(maxWidth: .infinity)
-            }.buttonStyle(TransitButtonStyle()).disabled(selected.isEmpty || routes.isEmpty || waiting.isBusy || waiting.activity != nil)
+            }.buttonStyle(TransitButtonStyle()).disabled(!allRoutesLoaded || waiting.isBusy || waiting.activity != nil)
              .transitActionBar().accessibilityIdentifier("waiting-start")
         }
         .alert("즐겨찾기 이름", isPresented: $rename) {
@@ -329,23 +337,16 @@ struct FavoriteDetailView: View {
         .sheet(isPresented: $edit) { StationFinderView(replacing: value) }
         .sheet(isPresented: $showWaiting) { NavigationStack { ActiveCommuteView() } }
         .onChange(of: configuration.cacheIdentity) { _, _ in
-            selected = Set(configuration.routeIds); routes = value.displayRoutes
+            routes = value.displayRoutes
         }
         .task(id: configuration.cacheIdentity) {
             await loadRoutes()
             if autoStart && !didStart { didStart = true; await start() }
-            while !Task.isCancelled {
-                if scenePhase == .active { await arrivals.refresh(configuration) }
-                do { try await Task.sleep(for: .seconds(30)) } catch { break }
-            }
         }
+        .arrivalPolling(arrivals, configuration: configuration, visible: !showWaiting && !edit)
     }
-    private func routeSelectionLabel(_ route: RouteSummary) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: selected.contains(route.routeId) ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(AppTheme.action).accessibilityHidden(true)
-            Text(route.routeName).font(.headline).fixedSize(horizontal: false, vertical: true)
-        }
+    private func routeLabel(_ route: RouteSummary) -> some View {
+        Text(route.routeName).font(.headline).fixedSize(horizontal: false, vertical: true)
     }
 
     private func loadRoutes() async {
@@ -357,15 +358,16 @@ struct FavoriteDetailView: View {
             guard !Task.isCancelled, configuration == requested.configuration else { return }
             routes = result.routes.filter { configuration.routeIds.contains($0.routeId) }
             if !routes.isEmpty { favorites.updateRouteNames(routes, for: requested) }
-            if routes.isEmpty { routeError = "저장한 버스를 확인할 수 없습니다. 정류장·버스를 다시 선택해 주세요." }
+            if !allRoutesLoaded { routeError = "저장한 버스를 확인할 수 없습니다. 정류장·버스를 다시 선택해 주세요." }
         } catch {
             guard !Task.isCancelled, configuration == requested.configuration else { return }
             routeError = error.localizedDescription
         }
     }
     private func start() async {
-        await waiting.start(configuration: configuration.selecting(selected), routes: routes.filter { selected.contains($0.routeId) })
-        if waiting.activity != nil { showWaiting = true }
+        guard allRoutesLoaded else { return }
+        showWaiting = true
+        await waiting.start(configuration: configuration, routes: routes)
     }
 }
 
@@ -378,12 +380,36 @@ struct ActiveCommuteView: View {
                 let attributes = activity.attributes
                 BusWaitingView(configuration: WidgetConfigurationData(stationId: attributes.stationId, stationName: attributes.stationName, routeIds: attributes.selectedRoutes.map(\.routeId)))
                     .padding()
+            } else if let configuration = waiting.pendingConfiguration {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(configuration.stationName).font(.title3.weight(.semibold))
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        ForEach(waiting.pendingRoutes) { route in
+                            HStack {
+                                Text(route.routeName).font(.headline)
+                                Spacer()
+                                if let arrival = waiting.preview?.arrivals.first(where: { $0.routeId == route.routeId })?.nearestPrediction(relativeTo: context.date)?.arrivalAt,
+                                   arrival > context.date {
+                                    Text(timerInterval: context.date...arrival, countsDown: true).monospacedDigit().frame(width: 88)
+                                } else { Text("확인 중").foregroundStyle(AppTheme.secondaryText) }
+                            }
+                        }
+                    }
+                    if waiting.isStarting { ProgressView("대기 시작 중…") }
+                    if let message = waiting.errorMessage {
+                        Text(message).font(.callout).foregroundStyle(AppTheme.secondaryText)
+                        Button("다시 시도") { Task { await waiting.retryStart() } }
+                            .buttonStyle(TransitButtonStyle()).disabled(waiting.isStarting)
+                    }
+                }.padding(20).transitCard().padding()
             } else {
                 TransitEmptyState(title: "대기가 종료되었습니다", symbol: "checkmark.circle",
                     message: "즐겨찾기에서 다시 기다릴 수 있습니다.")
             }
         }.background(AppTheme.background).foregroundStyle(AppTheme.text).tint(AppTheme.action)
          .navigationTitle("지금 기다리는 버스").navigationBarTitleDisplayMode(.inline)
-         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("닫기") { dismiss() } } }
+         .toolbar { ToolbarItem(placement: .confirmationAction) {
+             Button(waiting.isStarting ? "시작 취소" : "닫기") { if waiting.isStarting { waiting.cancelStart() }; dismiss() }
+         } }
     }
 }

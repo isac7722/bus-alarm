@@ -137,12 +137,17 @@ func (c *RouteCatalog) request(ctx context.Context, p, path string, q url.Values
 			}
 			if raw != nil {
 				var entry struct {
-					XML string `json:"xml"`
+					XML       string    `json:"xml"`
+					FetchedAt time.Time `json:"fetched_at"`
 				}
 				if json.Unmarshal(raw, &entry) != nil {
 					return nil, cacheError()
 				}
-				return c.decode(p, []byte(entry.XML))
+				root, e := c.decode(p, []byte(entry.XML))
+				if e == nil {
+					root.FetchedAt = entry.FetchedAt
+				}
+				return root, e
 			}
 		}
 		base, keyValue := strings.TrimSuffix(c.Config.APIBaseURL, "/stationinfo"), c.Config.APIKey
@@ -175,6 +180,7 @@ func (c *RouteCatalog) request(ctx context.Context, p, path string, q url.Values
 			return nil, routeError()
 		}
 		root, e := c.decode(p, body)
+		root.FetchedAt = time.Now().UTC()
 		if e != nil {
 			return nil, e
 		}
@@ -182,7 +188,7 @@ func (c *RouteCatalog) request(ctx context.Context, p, path string, q url.Values
 			return nil, routeError()
 		}
 		if ttl > 0 && c.Cache != nil {
-			raw, _ := json.Marshal(map[string]string{"xml": string(body)})
+			raw, _ := json.Marshal(map[string]any{"xml": string(body), "fetched_at": root.FetchedAt})
 			if cache, ok := c.Cache.(interface {
 				SetTTL(context.Context, string, []byte, time.Duration) error
 			}); ok {

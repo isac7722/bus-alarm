@@ -7,11 +7,37 @@ final class BusWaitingManager: ObservableObject {
     @Published private(set) var content: BusWaitingAttributes.ContentState?
     @Published private(set) var isBusy = false
     @Published var errorMessage: String?
+    @Published private(set) var isStarting = false
+    @Published private(set) var pendingConfiguration: WidgetConfigurationData?
+    @Published private(set) var pendingRoutes: [RouteSummary] = []
+    @Published private(set) var preview: ArrivalsResponse?
+    private var startTask: Task<Void, Never>?
+    private var needsRegistration = false
+    private(set) var retryAfter: Double?
 
     private var observations: [Task<Void, Never>] = []
     private var isRestoring = false
 
     func start(configuration: WidgetConfigurationData, routes: [RouteSummary]) async {
+        guard startTask == nil, !isBusy, activity == nil else { return }
+        pendingConfiguration = configuration.selecting(Set(routes.map(\.routeId)))
+        pendingRoutes = routes
+        preview = pendingConfiguration.flatMap { ArrivalRepository.shared.cached($0) }
+        isStarting = true
+        let task = Task { await performStart(configuration: configuration, routes: routes) }
+        startTask = task
+        await task.value
+        startTask = nil
+        isStarting = false
+    }
+
+    func cancelStart() { startTask?.cancel() }
+    func retryStart() async {
+        guard let pendingConfiguration else { return }
+        await start(configuration: pendingConfiguration, routes: pendingRoutes)
+    }
+
+    private func performStart(configuration: WidgetConfigurationData, routes: [RouteSummary]) async {
         guard !isBusy, !isRestoring, activity == nil, (1...4).contains(routes.count),
               Set(routes.map(\.routeId)).count == routes.count else { return }
         isBusy = true
@@ -20,9 +46,12 @@ final class BusWaitingManager: ObservableObject {
         var created: Activity<BusWaitingAttributes>?
         do {
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { throw LiveWaitError.disabled }
-            let api = try APIClient()
-            guard try await api.liveActivitiesAvailable() else { throw LiveWaitError.unavailable }
-            let response = try await api.arrivals(configuration: configuration, routeIds: routes.map(\.routeId))
+            async let available = ArrivalRepository.shared.liveAvailable()
+            async let arrivalRequest = ArrivalRepository.shared.fetch(configuration.selecting(Set(routes.map(\.routeId))))
+            guard try await available else { throw LiveWaitError.unavailable }
+            let response = try await arrivalRequest
+            try Task.checkCancellation()
+            preview = response
             let now = Date()
             let selected = routes.map { route in
                 BusWaitingAttributes.Route(
@@ -34,12 +63,13 @@ final class BusWaitingManager: ObservableObject {
                 let prediction = response.arrivals.first { $0.routeId == route.routeId }?.predictions.first {
                     $0.order == 1 && $0.vehicleStatus == .running && ($0.arrivalAt ?? .distantPast) > now
                 }
-                let fresh = now.timeIntervalSince(response.updatedAt) <= 90 && response.updatedAt <= now.addingTimeInterval(30)
+                let updatedAt = response.routeUpdatedAt?[route.routeId] ?? response.updatedAt
+                let fresh = now.timeIntervalSince(updatedAt) <= 90 && updatedAt <= now.addingTimeInterval(30)
                 return BusWaitingAttributes.RouteState(routeId: route.routeId, content: .init(
                     status: fresh && prediction != nil ? "waiting" : "unavailable",
                     arrivalAt: fresh ? prediction?.arrivalAt?.timeIntervalSince1970 : nil,
                     remainingStops: fresh ? prediction?.remainingStops : nil,
-                    updatedAt: response.updatedAt.timeIntervalSince1970
+                    updatedAt: updatedAt.timeIntervalSince1970
                 ))
             }
             guard let nearest = states.filter({ $0.content.arrivalAt != nil }).min(by: {
@@ -56,7 +86,7 @@ final class BusWaitingManager: ObservableObject {
             initial.routes = states
             let wait = try Activity.request(
                 attributes: attributes,
-                content: ActivityContent(state: initial, staleDate: response.updatedAt.addingTimeInterval(90)),
+                content: ActivityContent(state: initial, staleDate: initial.nextTransition()),
                 pushType: .token
             )
             created = wait
@@ -65,21 +95,15 @@ final class BusWaitingManager: ObservableObject {
             try LiveWaitStore.save(records)
             activity = wait
             content = initial
-            // Token delivery is asynchronous and can fail on unsupported signing/configurations.
-            var token: Data?
-            for _ in 0..<60 {
-                token = wait.pushToken
-                if token != nil { break }
-                try await Task.sleep(for: .milliseconds(250))
-            }
-            guard let token else { throw LiveWaitError.tokenUnavailable }
+            let token = try await firstToken(wait)
+            try Task.checkCancellation()
             let registration = try await register(wait, token: token)
-            await wait.update(ActivityContent(
-                state: registration.content,
-                staleDate: Date(timeIntervalSince1970: registration.content.updatedAt + 90)
-            ))
-            content = registration.content
-            observe(wait)
+            try Task.checkCancellation()
+            await apply(registration.content, to: wait)
+            needsRegistration = false
+
+            if activity?.id == wait.id { observe(wait) }
+            pendingConfiguration = nil; pendingRoutes = []; preview = nil
         } catch {
             if let created {
                 await created.end(nil, dismissalPolicy: .immediate)
@@ -87,7 +111,65 @@ final class BusWaitingManager: ObservableObject {
             }
             activity = nil
             content = nil
-            errorMessage = error.localizedDescription
+            if error is CancellationError { pendingConfiguration = nil; pendingRoutes = []; preview = nil }
+            else { errorMessage = error.localizedDescription }
+        }
+    }
+
+    private func firstToken(_ wait: Activity<BusWaitingAttributes>) async throws -> Data {
+        if let token = wait.pushToken { return token }
+        return try await withThrowingTaskGroup(of: Data.self) { group in
+            group.addTask {
+                for await token in wait.pushTokenUpdates { try Task.checkCancellation(); return token }
+                throw LiveWaitError.tokenUnavailable
+            }
+            group.addTask { try await Task.sleep(for: .seconds(15)); throw LiveWaitError.tokenUnavailable }
+            defer { group.cancelAll() }
+            return try await group.next()!
+        }
+    }
+
+    private func apply(_ value: BusWaitingAttributes.ContentState, to wait: Activity<BusWaitingAttributes>) async {
+        guard activity?.id == wait.id, !Task.isCancelled else { return }
+        if let content, !value.supersedes(content) { return }
+        content = value
+        if value.isEnded {
+            await wait.end(ActivityContent(state: value, staleDate: nil), dismissalPolicy: .after(.now.addingTimeInterval(60)))
+            guard activity?.id == wait.id else { return }
+            activity = nil
+            cancelObservations()
+            await removeRegistration(activityId: wait.id)
+        } else {
+            await wait.update(ActivityContent(state: value, staleDate: value.nextTransition()))
+        }
+    }
+
+    /// Foreground reconciliation reads the tracked session, never the next bus on the route.
+    @discardableResult
+    func refresh() async -> Bool {
+        guard !isBusy, !isRestoring, let wait = activity else { return true }
+        do {
+            guard let record = try LiveWaitStore.load().first(where: { $0.activityId == wait.id && !$0.needsDelete }) else { return true }
+            retryAfter = nil
+            let result: LiveWaitRegistration
+            if needsRegistration, let token = wait.pushToken {
+                result = try await register(wait, token: token)
+                needsRegistration = false
+            } else { result = try await APIClient().liveWait(secret: record.secret) }
+            guard !Task.isCancelled, !isBusy, activity?.id == wait.id else { return true }
+            await apply(result.content, to: wait)
+            if activity?.id == wait.id { errorMessage = nil }
+            return true
+        } catch {
+            if case APIClientError.server(code: "LIVE_ACTIVITY_ENDED", message: _) = error, activity?.id == wait.id {
+                await wait.end(nil, dismissalPolicy: .immediate)
+                activity = nil; content = nil; cancelObservations()
+                await removeRegistration(activityId: wait.id)
+                return true
+            }
+            if case APIClientError.rateLimited(let delay) = error { retryAfter = delay }
+            // A transient fetch error leaves the existing ETA on screen.
+            return false
         }
     }
 
@@ -99,9 +181,11 @@ final class BusWaitingManager: ObservableObject {
         let final = BusWaitingAttributes.ContentState(
             status: "cancelled", arrivalAt: nil, remainingStops: nil, updatedAt: Date().timeIntervalSince1970
         )
+        content = final
         await wait.end(ActivityContent(state: final, staleDate: nil), dismissalPolicy: .immediate)
         activity = nil
         content = nil
+        pendingConfiguration = nil; pendingRoutes = []; preview = nil
         await removeRegistration(activityId: wait.id)
     }
 
@@ -131,7 +215,12 @@ final class BusWaitingManager: ObservableObject {
             if let wait = active.first {
                 if activity?.id != wait.id { activity = wait; content = wait.content.state; observe(wait) }
                 if let token = wait.pushToken {
-                    do { _ = try await register(wait, token: token) }
+                    do {
+                        let result = try await register(wait, token: token)
+                        await apply(result.content, to: wait)
+                        needsRegistration = false
+                        errorMessage = nil
+                    }
                     catch {
                         if case APIClientError.server(code: "LIVE_ACTIVITY_ENDED", message: _) = error {
                             await wait.end(nil, dismissalPolicy: .immediate)
@@ -140,7 +229,7 @@ final class BusWaitingManager: ObservableObject {
                             cancelObservations()
                             await removeRegistration(activityId: wait.id)
                         }
-                        errorMessage = error.localizedDescription
+                        needsRegistration = true
                     }
                 }
             } else { activity = nil; content = nil; cancelObservations() }
@@ -174,12 +263,17 @@ final class BusWaitingManager: ObservableObject {
             for await token in wait.pushTokenUpdates {
                 guard !Task.isCancelled else { return }
                 // Retry transient registration failures while the app has runtime.
-                for attempt in 0..<3 {
-                    do { _ = try await self?.register(wait, token: token); break }
+                self?.needsRegistration = true
+                for attempt in 0..<4 {
+                    do {
+                        if let result = try await self?.register(wait, token: token) { await self?.apply(result.content, to: wait) }
+                        self?.needsRegistration = false
+                        break
+                    }
                     catch {
                         guard !Task.isCancelled else { return }
-                        if attempt == 2 { self?.errorMessage = "실시간 현황 연결을 갱신하지 못했습니다. 앱을 다시 열어 연결을 확인해 주세요." }
-                        try? await Task.sleep(for: .seconds(5))
+                        if attempt == 3 { break }
+                        do { try await Task.sleep(for: .seconds([1, 3, 5][attempt])) } catch { return }
                     }
                 }
             }
@@ -187,6 +281,8 @@ final class BusWaitingManager: ObservableObject {
         observations.append(Task { [weak self] in
             for await value in wait.contentUpdates {
                 guard !Task.isCancelled else { return }
+                guard self?.activity?.id == wait.id else { return }
+                if let current = self?.content, !value.state.supersedes(current) { continue }
                 self?.content = value.state
             }
         })

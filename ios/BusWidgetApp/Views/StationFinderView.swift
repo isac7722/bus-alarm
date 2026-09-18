@@ -24,6 +24,7 @@ struct StationFinderView: View {
     private var fullList: Bool { verticalSize == .compact || typeSize.isAccessibilitySize }
     @State private var mapMoved = false
     @State private var selectedStationID: String?
+    @ScaledMetric(relativeTo: .title2) private var backIconSize = 24.0
 
     var body: some View {
         NavigationStack {
@@ -31,6 +32,7 @@ struct StationFinderView: View {
                 mapControls
                     .font(.subheadline.weight(.medium)).padding(.horizontal, 20)
                     .background(AppTheme.surface)
+                    .dynamicTypeSize(typeSize)
                 Divider().overlay(AppTheme.separator)
                 if let message = location.message { Text(message).font(.callout).padding(.horizontal) }
                 GeometryReader { geometry in
@@ -53,11 +55,15 @@ struct StationFinderView: View {
                         .overlay(alignment: .top) { Divider().overlay(AppTheme.separator).padding(.horizontal, 16) }
                     }
                 }
+                .dynamicTypeSize(typeSize)
             }.background(AppTheme.background).foregroundStyle(AppTheme.text).tint(AppTheme.action)
             .toolbar { if replacing != nil { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } } }
             .navigationTitle("정류장 찾기")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $model.query, isPresented: $searching, prompt: "정류장 이름 또는 번호")
+            // Keep native search controls at a stable size when rotating above the keyboard.
+            // Custom controls and list content retain the user's text size through overrides above.
+            .dynamicTypeSize(min(typeSize, .xxxLarge))
             .onChange(of: model.query) { _, _ in model.search() }
             .onChange(of: searching) { _, active in
                 if active { beforeSearch = detent; setDetent(.expanded) }
@@ -94,7 +100,28 @@ struct StationFinderView: View {
     }
 
     @ViewBuilder private var mapControls: some View {
-        if typeSize.isAccessibilitySize && verticalSize != .compact {
+        if searching {
+            Button {
+                model.query = ""
+                searching = false
+            } label: {
+                HStack(spacing: AppTheme.spacingSmall) {
+                    Image(systemName: "arrow.left")
+                        .font(.system(size: verticalSize == .compact ? min(backIconSize, 32) : backIconSize, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text("돌아가기")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .buttonStyle(TransitButtonStyle(prominent: false))
+            .dynamicTypeSize(verticalSize == .compact ? min(typeSize, .xxxLarge) : typeSize)
+            .accessibilityShowsLargeContentViewer { Label("돌아가기", systemImage: "arrow.left") }
+            .accessibilityLabel("돌아가기")
+            .accessibilityHint("검색을 종료하고 검색 전 정류장 탐색으로 돌아갑니다.")
+            .accessibilityIdentifier("station-search-cancel")
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, AppTheme.spacingSmall)
+        } else if typeSize.isAccessibilitySize && verticalSize != .compact {
             VStack(alignment: .leading, spacing: 4) {
                 mapDisplayControl
                 myLocationButton
@@ -108,10 +135,7 @@ struct StationFinderView: View {
         }
     }
     @ViewBuilder private var mapDisplayControl: some View {
-        if searching {
-            Button("검색 취소") { model.query = ""; searching = false }
-                .frame(minHeight: 44).accessibilityIdentifier("station-search-cancel")
-        } else if fullList {
+        if fullList {
             Label("정류장 목록", systemImage: "list.bullet").foregroundStyle(AppTheme.secondaryText)
         } else {
             Text("지도에서 찾거나 목록을 올려보세요")

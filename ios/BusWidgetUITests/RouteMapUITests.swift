@@ -82,6 +82,25 @@ final class RouteMapUITests: XCTestCase {
         XCTFail("Could not reach \(meters)m scale: \(String(describing: scale.value))")
     }
 
+    func testFindingAndFavoriteCardsRefreshWithoutExtraTaps() {
+        let app = launch(fixturePath: "/refresh")
+        openStation(app)
+        let option = app.buttons["boarding-option.\(ids[0]):104000069:1"]
+        expectation(for: NSPredicate { _, _ in option.label.contains("3분") }, evaluatedWith: nil)
+        waitForExpectations(timeout: 8)
+        let originalY = option.frame.minY
+        expectation(for: NSPredicate { _, _ in option.label.contains("1분") }, evaluatedWith: nil)
+        waitForExpectations(timeout: 18)
+        XCTAssertEqual(option.frame.minY, originalY, accuracy: 2)
+        option.tap()
+        saveFavorite(app)
+        let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite.")).firstMatch
+        expectation(for: NSPredicate { _, _ in card.label.contains("4분") }, evaluatedWith: nil)
+        waitForExpectations(timeout: 18)
+        XCTAssertFalse(app.staticTexts["업데이트 중"].exists)
+        attach("favorite-live-arrivals")
+    }
+
     func testFavoriteSwipeDeleteCanBeUndoneAndPersists() {
         let app = launch()
         openStation(app)
@@ -145,8 +164,42 @@ final class RouteMapUITests: XCTestCase {
         XCTAssertEqual(handle.value as? String, "펼침")
         search.typeText("9304")
         XCTAssertTrue(app.staticTexts["정류장이 없습니다."].waitForExistence(timeout: 5))
-        app.buttons["station-search-cancel"].tap()
+        let back = app.buttons["station-search-cancel"]
+        XCTAssertTrue(back.isHittable)
+        XCTAssertEqual(back.label, "돌아가기")
+        XCTAssertGreaterThanOrEqual(back.frame.height, 48)
+        attach("station-search-back")
+        back.tap()
         XCTAssertEqual(handle.value as? String, "접힘")
+        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        XCTAssertFalse(back.exists)
+        XCTAssertTrue(app.buttons["station-row.gg:104000069"].waitForExistence(timeout: 5))
+        XCTAssertEqual(scale.value as? String, initialScale)
+    }
+
+    func testSearchBackAtLargestTypeInDarkModeAndLandscape() {
+        let app = launch(large: true)
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap(); search.typeText("9304")
+        let back = app.buttons["station-search-cancel"]
+        XCTAssertTrue(back.isHittable)
+        XCTAssertGreaterThanOrEqual(back.frame.height, 48)
+        XCTAssertGreaterThanOrEqual(back.frame.minX, 0)
+        XCTAssertLessThanOrEqual(back.frame.maxX, app.frame.maxX)
+        attach("station-search-back-largest-dark")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        expectation(for: NSPredicate { _, _ in app.frame.width > app.frame.height && back.isHittable }, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+        XCTAssertLessThanOrEqual(back.frame.maxX, app.frame.maxX)
+        XCTAssertGreaterThanOrEqual(back.frame.minY, search.frame.maxY)
+        XCTAssertLessThanOrEqual(back.frame.maxY, app.keyboards.firstMatch.frame.minY)
+        attach("station-search-back-largest-landscape")
+        back.tap()
+        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        XCTAssertTrue(app.buttons["my-location"].isHittable)
+        XCTAssertTrue(app.buttons["station-row.gg:104000069"].waitForExistence(timeout: 5))
     }
 
     func testExpandedPanelScrollsWithoutResizingOrSelectingStation() {
@@ -199,7 +252,7 @@ final class RouteMapUITests: XCTestCase {
         saveFavorite(app)
         let start = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite-start.")).firstMatch
         XCTAssertTrue(start.waitForExistence(timeout: 5)); start.tap()
-        XCTAssertTrue(app.buttons["waiting-start"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["지금 기다리는 버스"].waitForExistence(timeout: 3))
         // The fixture disables Live Activities; an automatic attempt must surface its error.
         XCTAssertTrue(app.staticTexts["실시간 현황 서비스를 준비 중입니다. 잠시 후 다시 시도해 주세요."].waitForExistence(timeout: 8))
         attach("favorite-direct-wait-feedback")
@@ -418,45 +471,61 @@ final class RouteMapUITests: XCTestCase {
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite.")).firstMatch.label.contains("9304"))
         openFavorite(app)
         XCTAssertFalse(app.buttons["위젯에 표시"].exists)
-        XCTAssertTrue(app.buttons["waiting-route.gg:227000040"].exists)
+        XCTAssertTrue(app.staticTexts["waiting-route.gg:227000040"].exists)
         XCTAssertTrue(app.buttons["waiting-start"].isEnabled)
         attach("favorite-waiting-without-widget")
     }
-    func testMultipleWaitingRoutesCanBeSelectedAndCleared() {
+    func testWaitingStartsAllSavedRoutesWithoutSelection() {
         let app = launch()
         openStation(app)
         for id in ids { select(id, in: app) }
         saveFavorite(app)
-        attach("favorite-card-four-routes")
         openFavorite(app)
         let start = app.buttons["waiting-start"]
-        XCTAssertTrue(start.isEnabled); XCTAssertTrue(start.label.contains("4개"))
-        attach("favorite-four-routes")
+        XCTAssertTrue(start.isEnabled)
+        XCTAssertEqual(start.label, "4개 버스 기다리기")
+        XCTAssertFalse(app.navigationBars["지금 기다리는 버스"].exists)
+        XCTAssertFalse(app.buttons["현재 대기 보기"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "마지막 확인")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts["선택한 버스 중 가장 먼저 도착"].exists)
+        XCTAssertFalse(app.staticTexts["오늘의 선택은 즐겨찾기에 저장된 버스를 바꾸지 않습니다."].exists)
         for id in ids {
-            let route = app.buttons["waiting-route.\(id)"]
+            XCTAssertFalse(app.buttons["waiting-route.\(id)"].exists)
+            let route = app.staticTexts["waiting-route.\(id)"]
             reveal(route, in: app); route.tap()
+            XCTAssertEqual(start.label, "4개 버스 기다리기")
         }
-        XCTAssertFalse(start.isEnabled)
-        reveal(app.buttons["waiting-route.gg:fixture-3"], in: app)
-        app.buttons["waiting-route.gg:fixture-3"].tap()
-        XCTAssertTrue(start.isEnabled); XCTAssertTrue(start.label.contains("1개"))
+        let saved = app.buttons["detail-save-favorite"]
+        reveal(saved, in: app)
+        XCTAssertEqual(saved.label, "즐겨찾기에 저장됨")
+        XCTAssertFalse(saved.isEnabled)
+        reveal(app.buttons["정류장·버스 변경"], in: app)
+        attach("favorite-all-saved-routes")
+        start.tap()
+        XCTAssertTrue(app.navigationBars["지금 기다리는 버스"].waitForExistence(timeout: 3))
+        for name in ["9304", "1113-1", "13", "32"] {
+            XCTAssertTrue(app.staticTexts[name].exists, "All saved routes must reach the waiting preview")
+        }
         app.terminate(); app.launch(); openFavorite(app)
-        XCTAssertTrue(app.buttons["waiting-start"].label.contains("4개"), "Today's selection must not overwrite the favorite")
+        XCTAssertEqual(app.buttons["waiting-start"].label, "4개 버스 기다리기")
     }
-    func testLargeTypeDarkSelectionAndLandscape() {
+    func testLargeTypeDarkWaitingAndLandscape() {
         let app = launch(large: true)
         openStation(app)
         select(ids[0], in: app)
         saveFavorite(app)
         attach("favorite-card-largest-type-dark")
         openFavorite(app)
-        let route = app.buttons["waiting-route.gg:227000040"]
-        reveal(route, in: app); route.tap()
-        XCTAssertFalse(app.buttons["waiting-start"].isEnabled)
+        let route = app.staticTexts["waiting-route.gg:227000040"]
+        reveal(route, in: app)
+        XCTAssertTrue(route.label.contains("9304"))
+        XCTAssertTrue(app.buttons["waiting-start"].isEnabled)
+        XCTAssertEqual(app.buttons["waiting-start"].label, "1개 버스 기다리기")
         attach("favorite-largest-type-dark")
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }
-        XCTAssertTrue(app.buttons["waiting-start"].exists)
+        reveal(app.buttons["정류장·버스 변경"], in: app)
+        XCTAssertTrue(app.buttons["waiting-start"].isHittable)
         attach("favorite-largest-type-landscape")
     }
     func testLandscapeStationList() {

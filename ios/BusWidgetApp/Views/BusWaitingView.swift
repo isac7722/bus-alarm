@@ -21,16 +21,15 @@ struct BusWaitingView: View {
                         VStack(spacing: 12) {
                             ForEach(activity.attributes.selectedRoutes) { route in
                                 let state = content.state(for: route.routeId)
-                                let stale = context.date.timeIntervalSince1970 - state.updatedAt > 90
                                 ViewThatFits(in: .horizontal) {
                                     HStack {
                                         Text(route.routeName).font(.body.weight(.semibold))
                                         Spacer(minLength: 12)
-                                        arrivalLabel(state, stale: stale, date: context.date)
+                                        arrivalLabel(state, date: context.date)
                                     }
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(route.routeName).font(.body.weight(.semibold))
-                                        arrivalLabel(state, stale: stale, date: context.date)
+                                        arrivalLabel(state, date: context.date)
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 }
@@ -39,6 +38,7 @@ struct BusWaitingView: View {
                         }
                     }
                 }
+                if waiting.isStarting { ProgressView("대기 시작 중…").font(.callout) }
                 displayHelp
                 Button("전체 대기 종료", role: .destructive) { Task { await waiting.stop() } }
                     .buttonStyle(.bordered).controlSize(.large)
@@ -133,13 +133,13 @@ struct BusWaitingView: View {
     }
 
     @ViewBuilder
-    private func arrivalLabel(_ state: BusWaitingAttributes.ContentState, stale: Bool, date: Date) -> some View {
-        if !stale, state.status == "waiting", let arrival = state.arrivalDate, arrival > date {
+    private func arrivalLabel(_ state: BusWaitingAttributes.ContentState, date: Date) -> some View {
+        if state.status == "waiting", let arrival = state.arrivalDate, arrival > date {
             Text(timerInterval: date...arrival, countsDown: true)
                 .monospacedDigit().foregroundStyle(AppTheme.primary)
                 .frame(width: countdownWidth, alignment: .trailing)
         } else {
-            Text(state.message(isStale: stale, relativeTo: date))
+            Text(state.message(relativeTo: date))
                 .font(.callout).foregroundStyle(AppTheme.secondaryText)
         }
     }

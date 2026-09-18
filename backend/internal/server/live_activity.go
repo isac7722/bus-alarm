@@ -7,9 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"golang.org/x/sync/singleflight"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -22,11 +24,14 @@ type LiveArrivalClient interface {
 	FetchLive(context.Context, string, []Route) (LiveSnapshot, error)
 }
 type LiveActivities struct {
-	Redis   *redis.Client
-	Service *Service
-	Source  LiveArrivalClient
-	Pusher  LivePusher
-	Catalog *RouteCatalog
+	Redis       *redis.Client
+	Service     *Service
+	Source      LiveArrivalClient
+	Pusher      LivePusher
+	Catalog     *RouteCatalog
+	workersOnce sync.Once
+	workers     chan struct{}
+	snapshots   singleflight.Group
 }
 type liveTarget struct {
 	RouteID  string             `json:"route_id"`
@@ -68,8 +73,8 @@ func (h *Handler) serveLive(w http.ResponseWriter, r *http.Request) int {
 		writeJSON(w, 200, map[string]bool{"available": h.Live != nil})
 		return 200
 	}
-	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
-		w.Header().Set("Allow", "POST, DELETE")
+	if r.Method != http.MethodPost && r.Method != http.MethodDelete && r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET, POST, DELETE")
 		writeJSON(w, 405, map[string]string{"detail": "Method Not Allowed"})
 		return 405
 	}
@@ -80,12 +85,27 @@ func (h *Handler) serveLive(w http.ResponseWriter, r *http.Request) int {
 	if err != nil {
 		return h.writeError(w, err)
 	}
+	if r.Method == http.MethodGet {
+		h.Live.processSession(r.Context(), key, map[string]LiveSnapshot{}, false)
+		raw, e := h.Live.Redis.Get(r.Context(), key).Bytes()
+		if errors.Is(e, redis.Nil) {
+			return h.writeError(w, appError("LIVE_ACTIVITY_ENDED", "종료된 대기입니다.", 409))
+		}
+		var current LiveSession
+		if e != nil || json.Unmarshal(raw, &current) != nil {
+			return h.writeError(w, cacheError())
+		}
+		writeJSON(w, 200, map[string]any{"expires_at": current.ExpiresAt, "content": current.Content})
+		return 200
+	}
 	var session LiveSession
 	if r.Method == http.MethodDelete {
 		err = h.Live.mutate(r.Context(), key, func(current *LiveSession) error {
 			current.Ended = true
 			current.Content = LiveContent{Status: "cancelled", UpdatedAt: float64(time.Now().Unix())}
 			current.NextPushAt = 0
+			current.PushRetry = 0
+			current.Content.Revision = time.Now().UnixMilli()
 			if current.ExpiresAt == 0 {
 				current.ExpiresAt = time.Now().Add(liveLifetime).Unix()
 			}
@@ -176,6 +196,9 @@ func (h *Handler) serveLive(w http.ResponseWriter, r *http.Request) int {
 					return appError("LIVE_NO_PREDICTION", "운행 중인 버스의 도착 정보가 없어 대기를 시작할 수 없습니다.", 409)
 				}
 			}
+			if current.Content.Revision == 0 {
+				current.Content.Revision = time.Now().UnixMilli()
+			}
 			current.PushToken = strings.ToLower(registration.PushToken)
 			return nil
 		}, &session)
@@ -237,7 +260,7 @@ return false`)
 var liveUnlock = redis.NewScript(`if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0`)
 
 func (l *LiveActivities) Run(ctx context.Context) {
-	ticker := time.NewTicker(15 * time.Second)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
 		l.tick(ctx)
@@ -249,8 +272,8 @@ func (l *LiveActivities) Run(ctx context.Context) {
 	}
 }
 func (l *LiveActivities) tick(ctx context.Context) {
-	// Shared station snapshots avoid one Seoul API request per waiting user.
-	snapshots := map[string]LiveSnapshot{}
+	// Never sleep through a retry or let a slow device block other waits.
+	l.workersOnce.Do(func() { l.workers = make(chan struct{}, 32) })
 	iterator := l.Redis.Scan(ctx, 0, livePrefix+"*", 100).Iterator()
 	for iterator.Next(ctx) {
 		if strings.HasSuffix(iterator.Val(), ":lock") {
@@ -259,13 +282,22 @@ func (l *LiveActivities) tick(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		l.process(ctx, iterator.Val(), snapshots)
+		key := iterator.Val()
+		select {
+		case l.workers <- struct{}{}:
+			go func() { defer func() { <-l.workers }(); l.process(ctx, key, map[string]LiveSnapshot{}) }()
+		default:
+			// Busy sessions are revisited on the next one-second scheduler tick.
+		}
 	}
 	if iterator.Err() != nil && ctx.Err() == nil {
 		l.Service.Log.Warn("live_activity_scan_failed")
 	}
 }
 func (l *LiveActivities) process(ctx context.Context, key string, snapshots map[string]LiveSnapshot) {
+	l.processSession(ctx, key, snapshots, true)
+}
+func (l *LiveActivities) processSession(ctx context.Context, key string, snapshots map[string]LiveSnapshot, push bool) {
 	lock := key + ":lock"
 	owner := make([]byte, 16)
 	if _, err := rand.Read(owner); err != nil {
@@ -287,11 +319,12 @@ func (l *LiveActivities) process(ctx context.Context, key string, snapshots map[
 		return
 	}
 	var session LiveSession
-	if json.Unmarshal(raw, &session) != nil || session.PushToken == "" || session.NextPushAt > time.Now().Unix() {
+	if json.Unmarshal(raw, &session) != nil || session.PushToken == "" || (push && session.NextPushAt > time.Now().Unix()) {
 		return
 	}
 	now := time.Now()
-	if !session.Ended {
+	if !session.Ended && ((!push || session.PushRetry == 0) && session.NextRefreshAt <= now.Unix() || now.Unix() >= session.ExpiresAt) {
+		revision := session.Content.Revision
 		if len(session.Routes) > 0 {
 			for i := range session.Routes {
 				child := &session.Routes[i]
@@ -303,15 +336,23 @@ func (l *LiveActivities) process(ctx context.Context, key string, snapshots map[
 		} else {
 			session.advance(l.snapshot(ctx, session, snapshots), now)
 		}
+		session.Content.Revision = max(revision+1, time.Now().UnixMilli())
+		session.NextRefreshAt = time.Now().Add(5 * time.Second).Unix()
 	}
-	invalid, pushErr := l.Pusher.Push(ctx, session)
-	session.NextPushAt = now.Add(30 * time.Second).Unix()
-	if pushErr != nil {
-		// Keep the final state for retry; don't delete a failed end notification.
-		l.Service.Log.Warn("live_activity_push_failed", "error", pushErr.Error())
-	} else if session.Ended || invalid {
-		session.PushToken = ""
-		session.Ended = true
+	if push {
+		// A cancellation/token rotation while fetching takes precedence over this work.
+		latest, e := l.Redis.Get(ctx, key).Result()
+		if e != nil || latest != string(raw) {
+			return
+		}
+		invalid, pushErr := l.Pusher.Push(ctx, session)
+		session.schedulePush(time.Now(), pushErr)
+		if pushErr != nil {
+			l.Service.Log.Warn("live_activity_push_failed", "error", pushErr.Error())
+		} else if session.Ended || invalid {
+			session.PushToken = ""
+			session.Ended = true
+		}
 	}
 	encoded, _ := json.Marshal(session)
 	if _, err := liveCompareSet.Run(ctx, l.Redis, []string{key}, raw, encoded).Result(); err != nil && ctx.Err() == nil {

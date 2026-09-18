@@ -8,7 +8,6 @@ struct StationBusSelectionView: View {
     @EnvironmentObject private var favorites: FavoritesStore
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model: StationBusViewModel
-    @StateObject private var arrivals = CommuteArrivalsModel()
     @State private var nickname: String
     @State private var prepared: SavedStop?
     @State private var saved = false
@@ -48,30 +47,11 @@ struct StationBusSelectionView: View {
                     Text("이 정류장의 버스가 없습니다.").foregroundStyle(AppTheme.secondaryText)
                 }
                 ForEach(model.options) { stop in
-                    TimelineView(.periodic(from: .now, by: 10)) { context in
-                        Button { model.toggle(stop); saved = false } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(stop.routeName).font(.headline).monospacedDigit()
-                                    Text(stop.direction).font(.subheadline)
-                                    if model.selections.contains(where: { $0.id == stop.id }) {
-                                        Text(arrivals.label(stop.routeRef, at: context.date))
-                                            .font(.subheadline.weight(.medium)).monospacedDigit()
-                                            .foregroundStyle(AppTheme.action)
-                                    }
-                                    Text(stop.reason ?? (stop.nextStop.isEmpty ? "마지막 정류장" : "다음: \(stop.nextStop)"))
-                                        .font(.callout).foregroundStyle(AppTheme.secondaryText)
-                                }
-                                Spacer(minLength: 0)
-                                Image(systemName: model.selections.contains(where: { $0.id == stop.id }) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(AppTheme.action).font(.title3).accessibilityHidden(true)
-                            }.frame(minHeight: 44).padding(.vertical, 8).contentShape(Rectangle())
-                        }.buttonStyle(.plain).disabled(model.disabled(stop))
-                         .accessibilityIdentifier("boarding-option.\(stop.id)")
-                         .accessibilityAddTraits(model.selections.contains(where: { $0.id == stop.id }) ? .isSelected : [])
-                         .accessibilityValue(model.selections.contains(where: { $0.id == stop.id }) ? "선택됨" : "선택 안 됨")
-                    }
-                    .listRowBackground(model.selections.contains(where: { $0.id == stop.id }) ? AppTheme.selection : AppTheme.surface)
+                    StationArrivalOption(stop: stop, station: model.station,
+                        selected: model.selections.contains(where: { $0.id == stop.id }),
+                        disabled: model.disabled(stop), refreshEnabled: prepared == nil) {
+                            model.toggle(stop); saved = false
+                        }
                 }
             }.listRowBackground(AppTheme.surface)
             if !model.selections.isEmpty {
@@ -80,9 +60,6 @@ struct StationBusSelectionView: View {
                         Text("별명 (선택)").font(.callout)
                         TextField("예: 퇴근길, 학교에서 집", text: $nickname)
                             .onChange(of: nickname) { _, _ in saved = false }
-                    }
-                    if let error = arrivals.error {
-                        Text(error).font(.footnote).foregroundStyle(AppTheme.secondaryText)
                     }
                     Text("도착정보가 없어도 즐겨찾기에 저장할 수 있습니다.")
                         .font(.footnote).foregroundStyle(AppTheme.secondaryText)
@@ -115,8 +92,9 @@ struct StationBusSelectionView: View {
                 Button {
                     Task {
                         if savingFavorite { await save() }
-                        else if let configuration = await model.validate() {
-                            prepared = SavedStop(configuration: configuration, nickname: nickname)
+                        else {
+                            // Server registration validates the boarding selection; don't block navigation on a duplicate request.
+                            prepared = SavedStop(configuration: model.draft, nickname: nickname)
                         }
                     }
                 } label: {
@@ -132,7 +110,6 @@ struct StationBusSelectionView: View {
         }
         .navigationDestination(item: $prepared) { value in FavoriteDetailView(favorite: value, autoStart: true) }
         .task { await model.load() }
-        .task(id: model.draft.cacheIdentity) { await arrivals.refresh(model.draft) }
     }
     private func save() async {
         guard let configuration = await model.validate() else { return }
@@ -140,5 +117,46 @@ struct StationBusSelectionView: View {
         if let editing { value.id = editing.id }
         saved = favorites.save(value)
         if saved { favorites.announceSave(value); dismiss() }
+    }
+}
+
+private struct StationArrivalOption: View {
+    @StateObject private var arrivals = CommuteArrivalsModel()
+    @State private var visible = false
+    let stop: RouteStopOccurrence
+    let station: MapStation
+    let selected: Bool
+    let disabled: Bool
+    let refreshEnabled: Bool
+    let toggle: () -> Void
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            Button(action: toggle) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 12) {
+                            Text(stop.routeName).font(.headline)
+                            if stop.selectable {
+                                Text(arrivals.label(stop.routeRef, at: context.date))
+                                    .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.action)
+                            }
+                        }.monospacedDigit()
+                        Text(stop.direction).font(.subheadline)
+                        Text(stop.reason ?? (stop.nextStop.isEmpty ? "마지막 정류장" : "다음: \(stop.nextStop)"))
+                            .font(.callout).foregroundStyle(AppTheme.secondaryText)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(AppTheme.action).font(.title3).accessibilityHidden(true)
+                }.frame(minHeight: 44).padding(.vertical, 8).contentShape(Rectangle())
+            }.buttonStyle(.plain).disabled(disabled)
+                .accessibilityIdentifier("boarding-option.\(stop.id)")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .accessibilityValue(selected ? "선택됨" : "선택 안 됨")
+        }
+        .listRowBackground(selected ? AppTheme.selection : AppTheme.surface)
+        .onAppear { visible = true }.onDisappear { visible = false }
+        .arrivalPolling(arrivals, configuration: WidgetConfigurationData(validated: ValidatedSelection(station: station, selections: [stop.selection])),
+                        visible: visible && refreshEnabled && stop.selectable)
     }
 }

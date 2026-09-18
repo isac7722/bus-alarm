@@ -41,10 +41,10 @@ struct BusWaitingLiveActivity: Widget {
             } compactLeading: {
                 Image(systemName: "bus.fill").foregroundStyle(Color(uiColor: TransitColors.liveAccent))
             } compactTrailing: {
-                WaitingCountdown(state: context.state.summary(), isStale: context.isStale)
+                WaitingCountdown(state: context.state.summary(), isStale: context.isStale, compact: true)
                     .font(.caption.monospacedDigit()).frame(width: 48)
             } minimal: {
-                WaitingCountdown(state: context.state.summary(), isStale: context.isStale)
+                WaitingCountdown(state: context.state.summary(), isStale: context.isStale, compact: true)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .frame(width: 36).foregroundStyle(Color(uiColor: TransitColors.liveAccent))
             }
@@ -67,8 +67,7 @@ private struct WaitingRouteRows: View {
                     Text(route.routeName).font(.subheadline.weight(.semibold))
                         .lineLimit(1).minimumScaleFactor(0.75)
                     Spacer(minLength: 0)
-                    if !isStale, Date.now.timeIntervalSince1970 - content.updatedAt <= 90,
-                       content.status == "waiting", let stops = content.remainingStops {
+                    if content.status == "waiting", let stops = content.remainingStops {
                         Text(stops == 0 ? "정류소 근처" : "\(stops)정류장 전")
                             .font(.caption).foregroundStyle(Color(uiColor: TransitColors.liveSecondary)).lineLimit(1)
                     }
@@ -86,11 +85,11 @@ private struct WaitingRouteRows: View {
 private struct WaitingCountdown: View {
     let state: BusWaitingAttributes.ContentState
     let isStale: Bool
+    var compact = false
 
-    private var stale: Bool { isStale || Date.now.timeIntervalSince1970 - state.updatedAt > 90 }
 
     var body: some View {
-        if !stale, state.status == "waiting", let arrival = state.arrivalDate, arrival > .now {
+        if state.status == "waiting", let arrival = state.arrivalDate, arrival > .now {
             // Keep the proposed width: fixedSize() can blank an ActivityKit timer.
             Text(timerInterval: Date.now...arrival, countsDown: true)
                 .monospacedDigit().multilineTextAlignment(.trailing)
@@ -104,7 +103,7 @@ private struct WaitingCountdown: View {
         case "arrived": return "도착"
         case "passed": return "통과 예상"
         case "expired", "cancelled", "finished": return "종료"
-        default: return stale || state.status == "unavailable" ? "갱신 지연" : "확인 중"
+        default: return compact ? "연결 중" : "다시 연결 중"
         }
     }
 }

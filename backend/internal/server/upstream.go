@@ -87,9 +87,10 @@ func (c *SeoulClient) httpError(id string, err error) error {
 
 // xmlNode retains nesting so the original descendant-path fallbacks are preserved.
 type xmlNode struct {
-	Name     xml.Name
-	Text     string
-	Children []xmlNode
+	FetchedAt time.Time // Internal fetch time; retained across cached XML decoding.
+	Name      xml.Name
+	Text      string
+	Children  []xmlNode
 }
 
 func (n *xmlNode) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {

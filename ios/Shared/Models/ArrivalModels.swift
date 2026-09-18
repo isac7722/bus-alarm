@@ -56,6 +56,8 @@ struct ArrivalsResponse: Codable, Hashable, Sendable {
     let updatedAt: Date
     let fetchedAt: Date
     let arrivals: [RouteArrival]
+    var routeUpdatedAt: [String: Date]? = nil
+    var failedRouteIds: [String]? = nil
 }
 
 enum DataFreshness: Equatable, Sendable {

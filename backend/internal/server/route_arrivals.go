@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -27,11 +28,14 @@ func (c *RouteCatalog) BoardingLive(ctx context.Context, b BoardingSelection) (L
 		q = url.Values{"stationId": {node}, "routeId": {id}, "staOrder": {strconv.Itoa(b.Sequence)}}
 		itemName = "busArrivalItem"
 	}
-	root, e := c.request(ctx, p, path, q, 30*time.Second)
+	root, e := c.request(ctx, p, path, q, 5*time.Second)
 	if e != nil {
 		return out, e
 	}
 	now := time.Now().UTC()
+	if !root.FetchedAt.IsZero() {
+		now = root.FetchedAt
+	}
 	out.UpdatedAt = now
 	if p == "gg" {
 		if t := firstText(root, []string{"msgHeader", "queryTime"}); t != "" {
@@ -97,19 +101,34 @@ func (c *RouteCatalog) Arrivals(ctx context.Context, r SelectionRequest) (Arriva
 		return ArrivalsResponse{}, e
 	}
 	out := ArrivalsResponse{Station: ArrivalStation{r.StationRef, valid.Station.Name}, FetchedAt: stamp(time.Now().UTC()), Arrivals: []RouteArrival{}}
-	for _, b := range valid.Selections {
-		s, e := c.BoardingLive(ctx, b)
-		if e != nil {
-			return out, e
+	snapshots := make([]LiveSnapshot, len(valid.Selections))
+	errors := make([]error, len(valid.Selections))
+	var workers sync.WaitGroup
+	for i, b := range valid.Selections {
+		workers.Add(1)
+		go func() { defer workers.Done(); snapshots[i], errors[i] = c.BoardingLive(ctx, b) }()
+	}
+	workers.Wait()
+	out.RouteUpdatedAt = map[string]Timestamp{}
+	for i, b := range valid.Selections {
+		if errors[i] != nil {
+			out.FailedRouteIDs = append(out.FailedRouteIDs, b.RouteRef)
+			continue
 		}
+		s := snapshots[i]
 		if out.UpdatedAt.IsZero() || s.UpdatedAt.Before(out.UpdatedAt.Time) {
 			out.UpdatedAt = stamp(s.UpdatedAt)
 		}
+		out.RouteUpdatedAt[b.RouteRef] = stamp(s.UpdatedAt)
 		a := RouteArrival{b.RouteRef, b.RouteName, []Prediction{}}
 		for _, bus := range s.Buses[b.RouteRef] {
 			a.Predictions = append(a.Predictions, bus.Prediction)
 		}
 		out.Arrivals = append(out.Arrivals, a)
 	}
+	if len(out.Arrivals) == 0 && len(errors) > 0 {
+		return out, errors[0]
+	}
+
 	return out, nil
 }

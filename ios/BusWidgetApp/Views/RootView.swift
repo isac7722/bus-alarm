@@ -5,6 +5,7 @@ struct RootView: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var favorites: FavoritesStore
+    @ObservedObject private var connection = ConnectionRecovery.shared
     @State private var addingFavorite = false
     @State private var tab: Int
     @State private var available: Bool?
@@ -19,6 +20,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $tab) {
             FavoritesView { addingFavorite = true; tab = 1 }
+                .environment(\.arrivalRefreshEnabled, tab == 0)
                 .tabItem { Label("즐겨찾기", systemImage: "bookmark") }.tag(0)
             Group {
                 if available == true { StationFinderView(intent: addingFavorite ? .addFavorite : .explore) }
@@ -36,7 +38,7 @@ struct RootView: View {
                         }.padding(.vertical, 24)
                     }.frame(maxWidth: .infinity, maxHeight: .infinity).background(AppTheme.background)
                 }
-            }.tabItem { Label("정류장 찾기", systemImage: "bus") }.tag(1)
+            }.environment(\.arrivalRefreshEnabled, tab == 1).tabItem { Label("정류장 찾기", systemImage: "bus") }.tag(1)
         }
         .onChange(of: favorites.saveNotice?.id) { _, notice in
             if notice != nil { tab = 0; addingFavorite = false }
@@ -73,7 +75,17 @@ struct RootView: View {
         }
         .sheet(isPresented: $showWaiting) { NavigationStack { ActiveCommuteView() } }
         .task { await checkDiscovery() }
-        .task { await waiting.restore() }
+        .task { _ = try? await ArrivalRepository.shared.liveAvailable() }
+        .task(id: "\(scenePhase)|\(connection.generation)") {
+            guard scenePhase == .active else { return }
+            await waiting.restore()
+            var failures = 0
+            while !Task.isCancelled {
+                if await waiting.refresh() { failures = 0 } else { failures += 1 }
+                let delay = failures > 0 && failures <= 3 ? [1, 3, 5][failures - 1] : 10
+                do { try await Task.sleep(for: .seconds(max(Double(delay), waiting.retryAfter ?? 0))) } catch { return }
+            }
+        }
         .onOpenURL { url in
             if url.scheme == "buswidget", url.host == "waiting" {
                 Task { await waiting.restore(); showWaiting = waiting.activity != nil }
@@ -82,7 +94,6 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task {
-                    await waiting.restore()
                     if available != true { await checkDiscovery() }
                 }
             }

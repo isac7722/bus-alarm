@@ -68,6 +68,10 @@ struct APIClient: Sendable {
         return try await get(path: "/api/\(version)/live-activities", method: "POST", body: body, secret: secret)
     }
 
+    func liveWait(secret: String) async throws -> LiveWaitRegistration {
+        try await get(path: "/api/v1/live-activities", secret: secret)
+    }
+
     func endLiveWait(secret: String) async throws {
         let _: LiveWaitRegistration = try await get(path: "/api/v1/live-activities", method: "DELETE", secret: secret)
     }
@@ -161,12 +165,17 @@ struct APIClient: Sendable {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            if Task.isCancelled { throw CancellationError() }
             throw APIClientError.transport
         }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIClientError.invalidResponse
         }
         guard 200..<300 ~= httpResponse.statusCode else {
+            if httpResponse.statusCode == 429 {
+                let delay = httpResponse.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init) ?? 60
+                throw APIClientError.rateLimited(retryAfter: max(1, delay))
+            }
             if let envelope = try? decoder.decode(APIErrorEnvelope.self, from: data) {
                 throw APIClientError.server(code: envelope.error.code, message: envelope.error.message)
             }

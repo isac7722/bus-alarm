@@ -111,7 +111,7 @@ GET /api/v1/stations/{station_id}
 GET /api/v1/stations/{station_id}/arrivals?route_ids=100100341,100100360
 ```
 
-- 도착 조회는 서울시 `getStationByUid`, 경기 연동 시 GBIS `getBusArrivalListv2`를 호출하고 Redis에 기본 30초간 캐시한 뒤 노선을 필터링합니다.
+- 도착 조회는 서울시 `getStationByUid`, 경기 연동 시 GBIS `getBusArrivalListv2`를 호출하고 Redis에 5초간 캐시한 뒤 노선을 필터링합니다.
 - 정류소의 노선 목록과 노선 선택 검증은 `getRouteByStation`의 전체 경유노선을 사용합니다. 서울시가 연계 제공하는 경기 노선과 도착 예측이 없는 노선도 포함하며, 목록은 도착정보와 별도로 기본 30초간 캐시합니다.
 - `backend/.env`에 `GYEONGGI_BUS_API_KEY`를 설정하면 경기 정류소 이름·번호 검색과 경유노선·도착정보 직접 조회를 추가합니다. 공공데이터포털의 **경기도 정류소 조회와 버스도착정보 조회** 두 서비스 승인이 필요합니다. [설정·배포 안내](backend/README.md#경기버스-gbis-직접-연동)를 참고하세요.
 - 기존 `station_id`는 5자리 ARS 번호를 유지하며, 경기 API에서 추가되는 정류소는 `gg:210000239`처럼 공급자와 9자리 노드 ID로 구분합니다. 검색 응답의 `station_id`를 그대로 상세·도착·실시간 현황 요청에 사용합니다.

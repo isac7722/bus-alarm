@@ -47,12 +47,15 @@ WAITING_OPTIONS = [STOP] + [
 
 
 class Handler(BaseHTTPRequestHandler):
+    refresh_counts = {}
     def log_message(self, *_args):
         print("UI fixture:", self.command, self.path, flush=True)
 
     def do_GET(self):
         path = self.path.split("?")[0]
         if path.endswith("/capabilities"):
+            if path.startswith("/refresh/"):
+                self.refresh_counts.clear()
             body = {"route_map": True}
         elif path.endswith("/stations/nearby"):
             stations = [STATION]
@@ -99,9 +102,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
-        if self.path.split("?")[0] == "/api/v2/selections/validate":
+        path = self.path.split("?")[0]
+        refresh_fixture = path.startswith("/refresh/")
+        if refresh_fixture:
+            path = path.removeprefix("/refresh")
+        if path == "/api/v2/selections/validate":
             self.send({"station": STATION, "selections": body["selections"]})
-        elif self.path.split("?")[0] == "/api/v2/arrivals":
+        elif path == "/api/v2/arrivals":
+            selection_key = self.path + ":" + ",".join(item["route_ref"] for item in body["selections"])
+            count = self.refresh_counts.get(selection_key, 0) + 1
+            self.refresh_counts[selection_key] = count
+            minutes = (3 if count == 1 else 1 if count == 2 else 4) if refresh_fixture else 3
             now = datetime.now(timezone.utc)
             self.send(
                 {
@@ -115,8 +126,8 @@ class Handler(BaseHTTPRequestHandler):
                             "predictions": [
                                 {
                                     "order": 1,
-                                    "arrival_at": (now + timedelta(minutes=index + 3)).isoformat(timespec="seconds"),
-                                    "remaining_seconds": (index + 3) * 60,
+                                    "arrival_at": (now + timedelta(minutes=index + minutes)).isoformat(timespec="seconds"),
+                                    "remaining_seconds": (index + minutes) * 60,
                                     "remaining_stops": index + 2,
                                     "vehicle_status": "RUNNING",
                                 }

@@ -306,7 +306,7 @@ func TestLiveWaitDoesNotInferArrivalFromMissingOrOlderData(t *testing.T) {
 		APS map[string]any `json:"aps"`
 	}
 	json.Unmarshal(livePayload(initial, now.Add(60*time.Second)), &payload)
-	if payload.APS["stale-date"] != float64(now.Add(90*time.Second).Unix()) {
-		t.Fatal("delivery must not extend source freshness", payload)
+	if payload.APS["stale-date"] != float64(initial.ExpiresAt) {
+		t.Fatal("elapsed ETA must not restart a countdown", payload)
 	}
 }

@@ -12,8 +12,8 @@ final class LiveActivityTests: XCTestCase {
         XCTAssertEqual(state.arrivalDate?.timeIntervalSince1970, 1_789_426_980)
         XCTAssertEqual(state.remainingStops, 2)
         XCTAssertEqual(state.message(relativeTo: Date(timeIntervalSince1970: state.updatedAt)), "도착까지")
-        XCTAssertEqual(state.message(relativeTo: Date(timeIntervalSince1970: 1_789_426_981)), "도착 정보 확인 중")
-        XCTAssertEqual(state.message(isStale: true), "도착 정보 갱신 지연")
+        XCTAssertEqual(state.message(relativeTo: Date(timeIntervalSince1970: 1_789_426_981)), "다시 연결 중")
+        XCTAssertEqual(state.message(isStale: true), "다시 연결 중")
         XCTAssertFalse(state.isEnded)
     }
 
@@ -24,7 +24,7 @@ final class LiveActivityTests: XCTestCase {
         let response = try JSONDecoder.busWidget.decode(LiveWaitRegistration.self, from: Data(json.utf8))
         XCTAssertEqual(response.expiresAt, 1_789_430_400)
         XCTAssertNil(response.content.arrivalDate)
-        XCTAssertEqual(response.content.message(), "도착 정보 갱신 지연")
+        XCTAssertEqual(response.content.message(), "다시 연결 중")
     }
 
     func testFinalStatesStayFinalWhenStale() {
@@ -49,10 +49,10 @@ final class LiveActivityTests: XCTestCase {
         for decoder in [JSONDecoder(), JSONDecoder.busWidget] {
             let state = try decoder.decode(BusWaitingAttributes.ContentState.self, from: Data(json.utf8))
             XCTAssertEqual(state.routes?.count, 4)
-            XCTAssertEqual(state.nearestRoute(relativeTo: now)?.routeId, "nearest")
-            XCTAssertEqual(state.summary(relativeTo: now).arrivalAt, 1_789_426_920)
+            XCTAssertEqual(state.nearestRoute(relativeTo: now)?.routeId, "stale")
+            XCTAssertEqual(state.summary(relativeTo: now).arrivalAt, 1_789_426_801)
             XCTAssertEqual(state.state(for: "arrived").status, "arrived")
-            XCTAssertEqual(state.summary(relativeTo: now.addingTimeInterval(121)).status, "unavailable")
+            XCTAssertEqual(state.summary(relativeTo: now.addingTimeInterval(301)).status, "unavailable")
             let ended = BusWaitingAttributes.ContentState(status: "cancelled", arrivalAt: nil, remainingStops: nil, updatedAt: now.timeIntervalSince1970, routes: state.routes)
             XCTAssertEqual(ended.state(for: "nearest").status, "cancelled")
         }

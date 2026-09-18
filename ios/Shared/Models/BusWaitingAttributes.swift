@@ -9,6 +9,7 @@ struct BusWaitingAttributes: ActivityAttributes {
         let remainingStops: Int?
         let updatedAt: Double
         var routes: [RouteState]? = nil
+        var revision: Int64? = nil
 
         var arrivalDate: Date? { arrivalAt.map(Date.init(timeIntervalSince1970:)) }
 
@@ -20,17 +21,32 @@ struct BusWaitingAttributes: ActivityAttributes {
             case "cancelled": return "대기를 종료했습니다"
             case "finished": return "모든 버스의 대기가 종료되었습니다"
             default:
-                if isStale || status == "unavailable" { return "도착 정보 갱신 지연" }
-                if let arrivalDate, arrivalDate <= date { return "도착 정보 확인 중" }
-                return arrivalAt == nil ? "도착 정보 확인 중" : "도착까지"
+                if status == "unavailable" || arrivalDate == nil || arrivalDate! <= date { return "다시 연결 중" }
+                return "도착까지"
             }
         }
 
         var isEnded: Bool { ["arrived", "passed", "expired", "cancelled", "finished"].contains(status) }
 
+        /// Age does not stop a last-known countdown. The next ETA is the system's next presentation boundary.
+        func nextTransition(after date: Date = .now) -> Date? {
+            let states = routes?.map(\.content) ?? [self]
+            return states.filter { $0.status == "waiting" }.compactMap(\.arrivalDate).filter { $0 > date }.min()
+        }
+        func supersedes(_ old: ContentState) -> Bool {
+            if old.isEnded { return false }
+            if let revision {
+                // The first tracked server state supersedes a local preview; source age is checked on the server.
+                guard let previous = old.revision else { return true }
+                return revision > previous
+            }
+            if old.revision != nil { return false }
+            return updatedAt >= old.updatedAt
+        }
+
         func nearestRoute(relativeTo date: Date = .now) -> RouteState? {
             routes?.filter {
-                $0.content.status == "waiting" && date.timeIntervalSince1970 - $0.content.updatedAt <= 90
+                $0.content.status == "waiting"
                     && ($0.content.arrivalAt ?? 0) > date.timeIntervalSince1970
             }.min { ($0.content.arrivalAt ?? .infinity) < ($1.content.arrivalAt ?? .infinity) }
         }

@@ -75,13 +75,13 @@ final class RouteMapTests: XCTestCase {
     }
 
     @MainActor
-    func testArrivalPreviewExpiresAndClearsWhenSelectionIsEmpty() async throws {
+    func testArrivalPreviewRetainsOldETAAndClearsWhenSelectionIsEmpty() async throws {
         let config = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding(4)]))
         let model = CommuteArrivalsModel(api: try api())
         await model.refresh(config)
         XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1030)), "2분")
-        XCTAssertNil(model.upcoming("gg:227000040", at: Date(timeIntervalSince1970: 1091)))
-        XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1091)), "갱신 필요")
+        XCTAssertNotNil(model.upcoming("gg:227000040", at: Date(timeIntervalSince1970: 1091)))
+        XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1121)), "다시 연결 중")
         await model.refresh(config.selecting([]))
         XCTAssertNil(model.response)
         XCTAssertFalse(model.loading)

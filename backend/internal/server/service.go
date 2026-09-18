@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 )
 
 type Service struct {
@@ -139,7 +140,15 @@ func (s *Service) Arrivals(ctx context.Context, id, routeIDs string) (ArrivalsRe
 		if err != nil {
 			return empty, err
 		}
-		if err := s.Cache.Set(ctx, key, b); err != nil {
+		var cacheErr error
+		if cache, ok := s.Cache.(interface {
+			SetTTL(context.Context, string, []byte, time.Duration) error
+		}); ok {
+			cacheErr = cache.SetTTL(ctx, key, b, 5*time.Second)
+		} else {
+			cacheErr = s.Cache.Set(ctx, key, b)
+		}
+		if err := cacheErr; err != nil {
 			return empty, err
 		}
 	}
