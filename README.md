@@ -162,7 +162,9 @@ make testflight-script-test  # 자동화 로직의 오프라인 테스트
 
 결과와 단계별 로그는 `ios/build/testflight/<실행 시각>/`에 저장됩니다. 기본 30분 대기 후에도 처리가 끝나지 않으면 `make testflight-status`로 다시 확인하세요. 특정 기록은 `python3 ios/scripts/testflight.py status --run ios/build/testflight/실행폴더 --timeout 3600`으로 확인할 수 있습니다. 인증 정보 없이 실행 흐름만 확인하려면 `python3 ios/scripts/testflight.py --dry-run`을 사용합니다.
 
-서명 인증서·프로파일은 Xcode 자동 서명을 사용합니다. 서명 실패 시 `archive.log`·`export.log`에서 권한과 App Group 설정을 확인하세요. 처리 완료는 Apple의 `VALID` 상태를 의미하며, 테스터 그룹 지정·외부 테스트 심사·App Store 출시 제출은 수행하지 않습니다. 수출 규정 준수 정보는 App Store Connect에서 별도로 확인합니다.
+서명 인증서·프로파일은 Xcode 자동 서명을 사용합니다. 서명 실패 시 `archive.log`·`export.log`에서 권한과 App Group 설정을 확인하세요. 처리 완료는 Apple의 `VALID` 상태를 의미하며, 테스터 그룹 지정·외부 테스트 심사·App Store 출시 제출은 수행하지 않습니다.
+
+앱의 `Info.plist`에 `ITSAppUsesNonExemptEncryption: false`를 포함해, 새 빌드 업로드마다 수출 규정의 **Manage → None of the algorithms mentioned above**를 반복 선택하지 않도록 합니다. 원본 설정은 `ios/project.yml`에 있어 프로젝트 재생성 후에도 유지됩니다. 이미 업로드한 빌드에는 소급 적용되지 않습니다. 이는 비면제 암호화를 사용하지 않는다는 선언이며, 앱이나 외부 SDK의 암호화 기능이 변경되면 [Apple 안내](https://developer.apple.com/documentation/security/complying-with-encryption-export-regulations)에 따라 재검토해야 합니다.
 
 ## 검증
 

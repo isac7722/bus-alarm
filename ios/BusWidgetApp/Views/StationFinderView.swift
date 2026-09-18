@@ -252,20 +252,14 @@ struct StationFinderView: View {
                 if model.loading || model.resolving {
                     ProgressView(model.resolving ? "정류장을 확인하는 중…" : "정류장을 찾는 중…").padding(20)
                 }
-                if let error = model.error {
+                if model.query.isEmpty, let error = model.error {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(error).font(.callout)
                         Button("다시 시도") { model.search() }.frame(minHeight: 44)
                     }.padding(.horizontal, 20)
-                } else if !model.loading && model.stations.isEmpty && model.routes.isEmpty && model.routeWarning == nil {
-                    TransitEmptyState(title: model.query.isEmpty ? "정류장이 없습니다." : "검색 결과가 없습니다.", symbol: "magnifyingglass",
+                } else if !model.loading && model.stations.isEmpty && model.routes.isEmpty {
+                    TransitEmptyState(title: model.query.isEmpty ? "정류장이 없습니다." : "검색결과 없음", symbol: "magnifyingglass",
                         message: model.query.isEmpty ? "지도를 옮기거나 정류장 이름으로 검색해 주세요." : "다른 버스 번호나 정류장 이름으로 검색해 주세요.")
-                }
-                if let warning = model.routeWarning {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(warning).font(.callout)
-                        Button("버스 검색 다시 시도") { model.search() }.frame(minHeight: 44)
-                    }.padding(20)
                 }
                 if !model.routes.isEmpty {
                     Text("버스").font(.headline).padding(.horizontal, 20).padding(.top, 12)

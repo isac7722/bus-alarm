@@ -303,8 +303,10 @@ final class RouteMapUITests: XCTestCase {
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 10))
         search.tap(); search.typeText("없는버스")
-        XCTAssertTrue(app.staticTexts["검색 결과가 없습니다."].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["검색결과 없음"].waitForExistence(timeout: 8))
         XCTAssertFalse(app.staticTexts["서버 응답을 처리할 수 없습니다."].exists)
+        XCTAssertFalse(app.buttons["다시 시도"].exists)
+        XCTAssertFalse(app.buttons["버스 검색 다시 시도"].exists)
         attach("station-search-empty")
     }
     private func searchBus(_ app: XCUIApplication) {
@@ -314,6 +316,8 @@ final class RouteMapUITests: XCTestCase {
         let route = app.buttons["route-result.gg:227000040"]
         XCTAssertTrue(route.waitForExistence(timeout: 10))
         XCTAssertTrue(route.label.contains("하남"))
+        XCTAssertFalse(app.buttons["다시 시도"].exists)
+        XCTAssertFalse(app.buttons["버스 검색 다시 시도"].exists)
         route.tap()
         XCTAssertTrue(app.staticTexts["어디서 타세요?"].waitForExistence(timeout: 8))
     }
@@ -333,6 +337,37 @@ final class RouteMapUITests: XCTestCase {
         let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite.")).firstMatch
         XCTAssertTrue(card.label.contains("9304"))
         XCTAssertTrue(card.label.contains("하남 방면"))
+    }
+
+    func testRoutePanelResizesBeforeAndAfterSelectingStop() {
+        let app = launch()
+        searchBus(app)
+        let handle = app.buttons["route-panel-handle"]
+        XCTAssertTrue(handle.waitForExistence(timeout: 5))
+        XCTAssertEqual(handle.value as? String, "중간")
+        let origin = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        origin.press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: 0, dy: -300)), withVelocity: .slow, thenHoldForDuration: 0.2)
+        expectation(for: NSPredicate { _, _ in (handle.value as? String) == "펼침" }, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+        app.buttons["route-stop.gg:227000040:104000069:1"].tap()
+        let wait = app.buttons["route-selection-wait"]
+        XCTAssertTrue(wait.waitForExistence(timeout: 5))
+        XCTAssertEqual(wait.label, "9304번 기다리기")
+        let expanded = handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        expanded.press(forDuration: 0.1, thenDragTo: expanded.withOffset(CGVector(dx: 0, dy: 500)), withVelocity: .slow, thenHoldForDuration: 0.2)
+        expectation(for: NSPredicate { _, _ in (handle.value as? String) == "접힘" }, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+        handle.tap()
+        XCTAssertEqual(handle.value as? String, "중간")
+        handle.tap()
+        XCTAssertEqual(handle.value as? String, "펼침")
+        XCTAssertTrue(wait.isHittable)
+        XCTAssertTrue(wait.isEnabled)
+        XCTAssertEqual(wait.label, "9304번 기다리기")
+        app.buttons["route-selection-close"].tap()
+        XCTAssertEqual(handle.value as? String, "펼침")
+        XCTAssertTrue(app.buttons["route-stop.gg:227000040:104000069:1"].isHittable)
+        attach("route-panel-resized")
     }
 
     func testBusSearchAllStopsSupportsRemoteRegistrationAndPreservesSearchOnBack() {

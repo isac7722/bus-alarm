@@ -6,6 +6,10 @@ struct RouteStopFinderView: View {
     @ObservedObject var location: StationLocationService
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.verticalSizeClass) private var verticalSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var detent: RoutePanelDetent = .medium
+    @State private var dragHeight: CGFloat?
+    @State private var dragOrigin: CGFloat?
     let replacing: SavedStop?
     let intent: StationSelectionIntent
     private var listOnly: Bool { typeSize.isAccessibilitySize || verticalSize == .compact }
@@ -21,17 +25,28 @@ struct RouteStopFinderView: View {
                 controls
             }
             GeometryReader { geometry in
+                let height = max(1, geometry.size.height)
+                let panelHeight = listOnly ? height : dragHeight ?? detent.height(in: height)
                 VStack(spacing: 0) {
                     if !listOnly {
-                        routeMap.frame(height: geometry.size.height * (model.selected == nil ? 0.42 : 0.32)).clipped()
+                        routeMap.frame(height: max(0, height - panelHeight)).clipped()
+                            .allowsHitTesting(height - panelHeight >= 44)
+                            .accessibilityHidden(height - panelHeight < 44)
                     }
-                    if let selected = model.selected {
-                        RouteBoardingPanel(stop: selected, replacing: replacing, intent: intent) {
-                            model.selected = nil
-                        }.id(selected.id)
-                    } else {
-                        stopList
+                    VStack(spacing: 0) {
+                        if !listOnly { panelHandle(height: height) }
+                        if let selected = model.selected {
+                            RouteBoardingPanel(stop: selected, replacing: replacing, intent: intent,
+                                               compactPanel: detent == .collapsed || dragHeight != nil) {
+                                model.selected = nil
+                            }.id(selected.id)
+                        } else {
+                            stopList
+                        }
                     }
+                    .frame(height: panelHeight).background(AppTheme.surface)
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16))
+                    .overlay(alignment: .top) { Divider().overlay(AppTheme.separator).padding(.horizontal, 16) }
                 }
             }
         }
@@ -42,10 +57,65 @@ struct RouteStopFinderView: View {
             if model.detail == nil { await model.load(coordinate: location.nearbyCoordinate) }
         }
         .task { await model.loadGeometry() }
-        .onChange(of: model.selected?.id) { _, id in if let id { lastSelectedID = id } }
+        .onChange(of: model.selected?.id) { _, id in
+            if let id {
+                lastSelectedID = id
+                if detent == .collapsed { setDetent(.medium) }
+            }
+        }
         .onChange(of: location.isLocating) { _, locating in
             if !locating { model.show(.nearby, coordinate: location.nearbyCoordinate) }
         }
+    }
+
+    private func setDetent(_ value: RoutePanelDetent) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.22)) {
+            detent = value; dragHeight = nil; dragOrigin = nil
+        }
+    }
+
+    private func panelHandle(height: CGFloat) -> some View {
+        Button { setDetent(detent.next) } label: {
+            VStack(spacing: 6) {
+                Capsule().fill(AppTheme.separator).frame(width: 36, height: 4).accessibilityHidden(true)
+                HStack {
+                    Text(model.selected == nil ? "정류장 · \(model.visibleStops.count)개" : "선택한 정류장")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Image(systemName: detent == .expanded ? "chevron.down" : "chevron.up")
+                }
+            }.foregroundStyle(AppTheme.text).padding(.horizontal, 20).padding(.vertical, 10)
+             .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("route-panel-handle")
+        .accessibilityLabel("노선 정류장 영역 크기")
+        .accessibilityValue(detent.label)
+        .accessibilityHint("위아래로 밀거나 두 번 탭하여 크기를 조절합니다.")
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: setDetent(detent == .collapsed ? .medium : .expanded)
+            case .decrement: setDetent(detent == .expanded ? .medium : .collapsed)
+            @unknown default: break
+            }
+        }
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 10, coordinateSpace: .global)
+                .onChanged { value in
+                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
+                    if dragOrigin == nil { dragOrigin = detent.height(in: height) }
+                    guard let origin = dragOrigin else { return }
+                    dragHeight = min(height, max(RoutePanelDetent.collapsed.height(in: height), origin - value.translation.height))
+                }
+                .onEnded { value in
+                    guard let origin = dragOrigin else { return }
+                    let projected = origin - value.predictedEndTranslation.height
+                    let nearest = RoutePanelDetent.allCases.min {
+                        abs($0.height(in: height) - projected) < abs($1.height(in: height) - projected)
+                    } ?? detent
+                    setDetent(nearest)
+                }
+        )
     }
 
     private var controls: some View {
@@ -140,6 +210,26 @@ struct RouteStopFinderView: View {
     @State private var lastSelectedID: String?
 }
 
+private enum RoutePanelDetent: CaseIterable {
+    case collapsed, medium, expanded
+
+    var label: String {
+        switch self { case .collapsed: "접힘"; case .medium: "중간"; case .expanded: "펼침" }
+    }
+
+    var next: Self {
+        switch self { case .collapsed: .medium; case .medium: .expanded; case .expanded: .collapsed }
+    }
+
+    func height(in available: CGFloat) -> CGFloat {
+        switch self {
+        case .collapsed: min(148, available * 0.3)
+        case .medium: available * 0.58
+        case .expanded: available
+        }
+    }
+}
+
 private struct RouteBoardingPanel: View {
     @EnvironmentObject private var favorites: FavoritesStore
     @StateObject private var model: StationBusViewModel
@@ -152,12 +242,14 @@ private struct RouteBoardingPanel: View {
     let stop: RouteStopOccurrence
     let replacing: SavedStop?
     let intent: StationSelectionIntent
+    let compactPanel: Bool
     let close: () -> Void
     private var saving: Bool { replacing != nil || intent == .addFavorite }
-    private var flexibleActions: Bool { typeSize.isAccessibilitySize || verticalSize == .compact }
+    private var flexibleActions: Bool { compactPanel || typeSize.isAccessibilitySize || verticalSize == .compact }
 
-    init(stop: RouteStopOccurrence, replacing: SavedStop?, intent: StationSelectionIntent, close: @escaping () -> Void) {
+    init(stop: RouteStopOccurrence, replacing: SavedStop?, intent: StationSelectionIntent, compactPanel: Bool, close: @escaping () -> Void) {
         self.stop = stop; self.replacing = replacing; self.intent = intent; self.close = close
+        self.compactPanel = compactPanel
         let sameStation = replacing?.configuration.stationId == stop.stationRef
         _model = StateObject(wrappedValue: StationBusViewModel(station: stop.station, favorite: sameStation ? replacing : nil, preselected: stop))
         _nickname = State(initialValue: replacing?.nickname ?? "")
