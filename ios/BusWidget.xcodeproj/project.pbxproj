@@ -15,6 +15,7 @@
 		1E9384692EEA7C24B9D4A8B5 /* ModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B17D35D3DDF80BB1FCCF15 /* ModelsTests.swift */; };
 		20548725715CE12C6DA82989 /* BusWaitingAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8442A7D2DC39C2395BA536 /* BusWaitingAttributes.swift */; };
 		23787C438F63926239CDEDEF /* BusWaitingLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E129FF1BED402910B0E942C6 /* BusWaitingLiveActivity.swift */; };
+		25019DDDB00C419C7ACEF197 /* RouteStopFinderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F32079DD3B48138278CE6F /* RouteStopFinderView.swift */; };
 		26371165E4D9448650D5D7B5 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 600AA69C0FD569783A53DF73 /* AppGroupStore.swift */; };
 		27FB93C4ED828237D618D89F /* RouteCatalogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31040BF1C7BF838879B3F158 /* RouteCatalogModels.swift */; };
 		29D5702D8FA3F3EC6692CA18 /* StationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555302F7156C337CA92933A1 /* StationModels.swift */; };
@@ -58,6 +59,7 @@
 		C98E5EFC5ECD5D6878F2300A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5AF80DA32639A2AC5438D91 /* APIClient.swift */; };
 		CDF38024522D7B0FCF32E8EF /* SavedStop.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E88597FF98C918F6D0B3B0 /* SavedStop.swift */; };
 		D16CDE90F36C75EF12B350ED /* StationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 555302F7156C337CA92933A1 /* StationModels.swift */; };
+		D2A01ED085B3F1B480DFC6A6 /* RouteStopFinderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0288FBB2781763A828A65B2 /* RouteStopFinderViewModel.swift */; };
 		DB937477722A4B2F3F0101FB /* WidgetConfigurationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08C15F57B93B62B2A4BFD3A /* WidgetConfigurationData.swift */; };
 		E3AFB62AAE7C2D295BE473AB /* ArrivalModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BBC954AFBB6D5D835E8C863 /* ArrivalModels.swift */; };
 		E9869D3AF51D5829283824FC /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F98EA8D67428A9757ACB32C /* APIError.swift */; };
@@ -135,6 +137,7 @@
 		7D17C097AEA35D691DA2BDBE /* BusWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWidgetApp.swift; sourceTree = "<group>"; };
 		830206F1EDCDB2AA4C5A3FED /* ArrivalRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrivalRepository.swift; sourceTree = "<group>"; };
 		841F5E200A0108CA848A98B0 /* BusWaitingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusWaitingManager.swift; sourceTree = "<group>"; };
+		86F32079DD3B48138278CE6F /* RouteStopFinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteStopFinderView.swift; sourceTree = "<group>"; };
 		8EF2654F694EC708E1F502B5 /* TransitColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitColors.swift; sourceTree = "<group>"; };
 		9255A46C6EBA2D8EA613F5AF /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		94FBAB668A7DA40F5BB99A1D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -146,6 +149,7 @@
 		C3E88597FF98C918F6D0B3B0 /* SavedStop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStop.swift; sourceTree = "<group>"; };
 		C5AF80DA32639A2AC5438D91 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		C62B4667350328DBEA2C7042 /* FavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesView.swift; sourceTree = "<group>"; };
+		D0288FBB2781763A828A65B2 /* RouteStopFinderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteStopFinderViewModel.swift; sourceTree = "<group>"; };
 		D08B7542DA02EB19C50C5489 /* BusWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = BusWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D491E717CD850087A9016A1A /* StationBusViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationBusViewModel.swift; sourceTree = "<group>"; };
 		DA4EEACB98E9637888D21A94 /* StationBusSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationBusSelectionView.swift; sourceTree = "<group>"; };
@@ -240,6 +244,7 @@
 				B276513ED7B006E59422E0A3 /* NaverTransitMap.swift */,
 				492632C9302F106AADACF091 /* PrivacyPolicyView.swift */,
 				7BE713BF2BBFC5A056AEB044 /* RootView.swift */,
+				86F32079DD3B48138278CE6F /* RouteStopFinderView.swift */,
 				DA4EEACB98E9637888D21A94 /* StationBusSelectionView.swift */,
 				A03DA10DEFD38809132CB108 /* StationFinderView.swift */,
 				2E47E81167DE17FC3261C155 /* TransitMarkerLayout.swift */,
@@ -328,6 +333,7 @@
 			isa = PBXGroup;
 			children = (
 				2F5C2F1662C871764E78C928 /* FavoritesStore.swift */,
+				D0288FBB2781763A828A65B2 /* RouteStopFinderViewModel.swift */,
 				D491E717CD850087A9016A1A /* StationBusViewModel.swift */,
 				08A6EE3C708AAB1801EE72CD /* StationFinderViewModel.swift */,
 				09BDBC538D46428224237414 /* StationLocationService.swift */,
@@ -575,6 +581,8 @@
 				403DD1857A10CD5B1F5B0CDD /* PrivacyPolicyView.swift in Sources */,
 				180C6332D14134639057C532 /* RootView.swift in Sources */,
 				27FB93C4ED828237D618D89F /* RouteCatalogModels.swift in Sources */,
+				25019DDDB00C419C7ACEF197 /* RouteStopFinderView.swift in Sources */,
+				D2A01ED085B3F1B480DFC6A6 /* RouteStopFinderViewModel.swift in Sources */,
 				CDF38024522D7B0FCF32E8EF /* SavedStop.swift in Sources */,
 				8674514D5CF695927D06674E /* StationBusSelectionView.swift in Sources */,
 				8B05634120A320DAAFF82EF0 /* StationBusViewModel.swift in Sources */,

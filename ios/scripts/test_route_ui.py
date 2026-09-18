@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
+from urllib.parse import parse_qs, urlparse
 
 STATION = {
     "station_ref": "gg:104000069",
@@ -83,10 +84,12 @@ class Handler(BaseHTTPRequestHandler):
             body = STATION
         elif path.endswith("/live-activities/availability"):
             body = {"available": False}
-        elif path == "/api/v1/stations/search":
+        elif path.endswith("/stations/search"):
             body = {"stations": []}
         elif path.endswith("/routes/search"):
-            body = {"routes": [ROUTE], "providers": [{"provider": "gg", "available": True}]}
+            query = parse_qs(urlparse(self.path).query).get("q", [""])[0]
+            routes = [ROUTE, {**ROUTE, "route_ref": "seoul:100000001", "region": "서울", "start": "다른 기점", "end": "다른 종점"}] if "9304" in query else []
+            body = {"routes": routes, "providers": [{"provider": "gg", "available": True}]}
         elif path.endswith("/geometry"):
             body = {"coordinates": [], "source": "stops"}
         elif path.endswith("/boarding-options"):
@@ -102,7 +105,10 @@ class Handler(BaseHTTPRequestHandler):
                 "route": ROUTE,
                 "revision": "ui-fixture",
                 "directions": [{"id": "outbound", "name": "하남 방면"}],
-                "stops": [STOP],
+                "stops": [STOP, {**STOP, "boarding_id": "gg:227000040:104000069:4", "sequence": 4,
+                                  "direction_id": "inbound", "direction": "강변역 방면", "next_stop": "반대 방향 다음 정류장"},
+                          {**STOP, "boarding_id": "gg:227000040:remote:10", "station_ref": "gg:remote", "sequence": 10,
+                           "station": {**STATION, "station_ref": "gg:remote", "name": "미리 등록할 회사 정류장", "latitude": 37.8, "longitude": 127.2}}],
             }
         else:
             self.send_error(404)

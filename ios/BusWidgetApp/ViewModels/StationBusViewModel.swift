@@ -12,10 +12,15 @@ final class StationBusViewModel: ObservableObject {
     private let api: APIClient?
     private let legacyRoutes: [String]
 
-    init(station: MapStation, favorite: SavedStop? = nil, api: APIClient? = try? APIClient()) {
+    init(station: MapStation, favorite: SavedStop? = nil, preselected: RouteStopOccurrence? = nil, api: APIClient? = try? APIClient()) {
         self.station = station; self.api = api
-        selections = favorite?.configuration.selections ?? []
         legacyRoutes = favorite?.configuration.version == 1 ? favorite?.configuration.routeIds ?? [] : []
+        selections = favorite?.configuration.selections ?? []
+        if let preselected, preselected.selectable, preselected.stationRef == station.id {
+            selections.removeAll { $0.routeRef == preselected.routeRef }
+            selections = Array(selections.prefix(3)) + [preselected.selection]
+            options = [preselected]
+        }
     }
     var draft: WidgetConfigurationData {
         WidgetConfigurationData(validated: ValidatedSelection(station: station, selections: selections))

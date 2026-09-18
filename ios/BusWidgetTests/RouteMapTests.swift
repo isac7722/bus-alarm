@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import CoreLocation
 @testable import BusWidgetApp
 
 private let testMapStation = MapStation(stationRef: "gg:104000069", name: "강변역", displayNumber: "05267", latitude: 37.535, longitude: 127.094)
@@ -178,6 +179,113 @@ final class RouteMapTests: XCTestCase {
         XCTAssertTrue(favorites.items.isEmpty)
     }
 
+    @MainActor
+    func testBusSearchSurvivesStationSearchFailureAndShowsProviderWarning() async throws {
+        let model = StationFinderViewModel(api: try api("gateway.test"))
+        model.query = "9304"
+        model.search()
+        for _ in 0..<100 where model.loading { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertFalse(model.loading)
+        XCTAssertEqual(model.routes.map(\.id), [testCatalogRoute.id])
+        XCTAssertTrue(model.stations.isEmpty)
+        XCTAssertNotNil(model.error)
+        XCTAssertTrue(model.routeWarning?.contains("서울") == true)
+    }
+
+    @MainActor
+    func testRouteSearchFailureDoesNotEraseStationResult() async throws {
+        let model = StationFinderViewModel(api: try api("route-failure.test"))
+        model.query = "05267"
+        model.search()
+        for _ in 0..<100 where model.loading { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertFalse(model.loading)
+        XCTAssertEqual(model.stations.first?.displayNumber, "05267")
+        XCTAssertTrue(model.routes.isEmpty)
+        XCTAssertNil(model.error)
+        XCTAssertNotNil(model.routeWarning)
+    }
+
+    @MainActor
+    func testCancelledSearchCannotReplaceNewQuery() async throws {
+        let model = StationFinderViewModel(api: try api())
+        model.query = "9304"; model.search(); model.cancel()
+        try await Task.sleep(for: .milliseconds(400))
+        XCTAssertTrue(model.routes.isEmpty)
+        XCTAssertFalse(model.loading)
+        model.query = "05267"; model.search()
+        for _ in 0..<100 where model.loading { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(model.query, "05267")
+        XCTAssertFalse(model.loading)
+        XCTAssertFalse(model.routes.isEmpty)
+    }
+
+    @MainActor
+    func testRouteWithoutLocationStartsWithAllStopsAndKeepsDirectionsDistinct() async throws {
+        let model = RouteStopFinderViewModel(route: testCatalogRoute, api: try api())
+        await model.load(coordinate: nil)
+        XCTAssertEqual(model.scope, .all)
+        XCTAssertEqual(model.visibleStops.map(\.sequence), [1, 4])
+        XCTAssertEqual(model.mapStations.count, 1)
+        XCTAssertNil(model.selected)
+        model.focus(testMapStation)
+        XCTAssertNil(model.selected, "A shared map pin must not silently choose a direction")
+        XCTAssertEqual(model.visibleStops.count, 2)
+        model.select(occurrence(4))
+        XCTAssertEqual(model.selected?.directionId, "inbound")
+        model.show(.nearby, coordinate: CLLocationCoordinate2D(latitude: 37.535, longitude: 127.094))
+        XCTAssertEqual(model.scope, .nearby)
+        XCTAssertEqual(model.selected?.sequence, 4)
+        model.show(.all, coordinate: nil)
+        XCTAssertEqual(model.visibleStops.count, 2)
+        model.show(.nearby, coordinate: CLLocationCoordinate2D(latitude: 35, longitude: 128))
+        XCTAssertEqual(model.scope, .all)
+        XCTAssertTrue(model.notice?.contains("1km") == true)
+    }
+
+    @MainActor
+    func testNearbyRankingDoesNotDropStopsFromAllViewOrInventMissingCoordinates() {
+        let origin = CLLocationCoordinate2D(latitude: 37.535, longitude: 127.094)
+        let original = occurrence()
+        func at(_ id: String, latitude: Double?, longitude: Double?) -> RouteStopOccurrence {
+            let station = MapStation(stationRef: id, name: id, displayNumber: "", latitude: latitude, longitude: longitude)
+            return RouteStopOccurrence(boardingId: id, routeRef: original.routeRef, routeRevision: original.routeRevision,
+                routeName: original.routeName, stationRef: id, sequence: 10, directionId: original.directionId,
+                direction: original.direction, station: station, nextStop: "", selectable: true, reason: nil)
+        }
+        let near = at("near", latitude: 37.536, longitude: 127.094)
+        let far = at("far", latitude: 36, longitude: 128)
+        let missing = at("missing", latitude: nil, longitude: nil)
+        let result = RouteStopFinderViewModel.nearby([far, near, missing, original], coordinate: origin)
+        XCTAssertEqual(result.map(\.id), [original.id, near.id])
+        XCTAssertNil(RouteStopFinderViewModel.point(missing.station))
+    }
+
+    @MainActor
+    func testPreselectionKeepsExactDirectionAndSurvivesOptionsRefreshAndValidationFailure() async throws {
+        let model = StationBusViewModel(station: testMapStation, preselected: occurrence(4), api: try api("changed.test"))
+        XCTAssertTrue(model.canContinue)
+        XCTAssertEqual(model.selections, [boarding(4)])
+        await model.load()
+        XCTAssertEqual(model.selections, [boarding(4)])
+        let result = await model.validate()
+        XCTAssertNil(result)
+        XCTAssertEqual(model.selections, [boarding(4)])
+        XCTAssertNotNil(model.error)
+    }
+
+    @MainActor
+    func testNearbyLocationRequiresRecentAccurateFix() {
+        let now = Date()
+        func fix(age: Double, accuracy: Double) -> CLLocation {
+            CLLocation(coordinate: .init(latitude: 37.5, longitude: 127), altitude: 0,
+                       horizontalAccuracy: accuracy, verticalAccuracy: -1, timestamp: now.addingTimeInterval(-age))
+        }
+        XCTAssertTrue(StationLocationService.isUsableForNearby(fix(age: 30, accuracy: 50), now: now))
+        XCTAssertFalse(StationLocationService.isUsableForNearby(fix(age: 121, accuracy: 50), now: now))
+        XCTAssertFalse(StationLocationService.isUsableForNearby(fix(age: 0, accuracy: 151), now: now))
+        XCTAssertFalse(StationLocationService.isUsableForNearby(fix(age: 0, accuracy: -1), now: now))
+    }
+
     private func api(_ host: String = "routes.test") throws -> APIClient {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [RouteTestProtocol.self]
@@ -242,8 +350,19 @@ private final class RouteTestProtocol: URLProtocol {
             if request.url?.host == "gateway.test" {
                 status = 502
                 data = Data("error code: 502".utf8)
+            } else if request.url?.host == "route-failure.test" {
+                data = Data(#"{"stations":[{"station_id":"05267","name":"강변역","ars_id":"05267","latitude":37.535,"longitude":127.094}]}"#.utf8)
             } else {
                 data = Data(#"{"stations":[]}"#.utf8)
+            }
+        case "/api/v2/routes/search":
+            if request.url?.host == "route-failure.test" {
+                status = 502; data = Data("gateway error".utf8)
+            } else {
+                data = try! JSONEncoder.busWidget.encode(CatalogSearchResponse(routes: [testCatalogRoute], providers: [
+                    ProviderStatus(provider: "gg", available: true, message: nil),
+                    ProviderStatus(provider: "seoul", available: false, message: "일부 결과를 조회하지 못했습니다.")
+                ]))
             }
         case "/api/v1/stations/05267":
             if request.url?.host == "gateway.test" {

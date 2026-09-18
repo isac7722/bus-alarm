@@ -7,6 +7,16 @@ final class StationLocationService: NSObject, ObservableObject, @preconcurrency 
     @Published private(set) var message: String?
     @Published private(set) var isLocating = false
     @Published private(set) var updateID = UUID()
+    private var latestFix: CLLocation?
+    var nearbyCoordinate: CLLocationCoordinate2D? {
+        guard let latestFix, coordinate != nil,
+              Self.isUsableForNearby(latestFix, now: .now) else { return nil }
+        return latestFix.coordinate
+    }
+    static func isUsableForNearby(_ fix: CLLocation, now: Date) -> Bool {
+        CLLocationCoordinate2DIsValid(fix.coordinate) && fix.horizontalAccuracy >= 0 && fix.horizontalAccuracy <= 150
+            && abs(fix.timestamp.timeIntervalSince(now)) <= 120
+    }
     private let manager: CLLocationManager
     private var requested = false
     private var retryCount = 0
@@ -52,6 +62,7 @@ final class StationLocationService: NSObject, ObservableObject, @preconcurrency 
             return
         }
         finish()
+        latestFix = location
         coordinate = location.coordinate
         message = location.horizontalAccuracy > 150 ? "현재 위치가 정확하지 않을 수 있어요. 정류장 번호와 방향을 확인해 주세요." : nil
         // Every successful request recenters, including an unchanged latitude/longitude.

@@ -134,7 +134,7 @@ struct StationBusSelectionView: View {
     }
 }
 
-private struct StationArrivalOption: View {
+struct StationArrivalOption: View {
     @StateObject private var arrivals = CommuteArrivalsModel()
     @State private var visible = false
     let stop: RouteStopOccurrence

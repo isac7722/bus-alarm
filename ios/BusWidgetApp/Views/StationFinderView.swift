@@ -17,6 +17,7 @@ struct StationFinderView: View {
     @State private var detent: StationPanelDetent = .medium
     @State private var beforeSearch: StationPanelDetent = .medium
     @State private var searching = false
+    @State private var selectedRoute: CatalogRoute?
     @State private var dragHeight: CGFloat?
     @State private var dragOrigin: CGFloat?
     @State private var listAtTop = true
@@ -60,7 +61,7 @@ struct StationFinderView: View {
             .toolbar { if replacing != nil { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } } }
             .navigationTitle("정류장 찾기")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $model.query, isPresented: $searching, prompt: "정류장 이름 또는 번호")
+            .searchable(text: $model.query, isPresented: $searching, prompt: "버스 번호 또는 정류장")
             // Keep native search controls at a stable size when rotating above the keyboard.
             // Custom controls and list content retain the user's text size through overrides above.
             .dynamicTypeSize(min(typeSize, .xxxLarge))
@@ -72,9 +73,11 @@ struct StationFinderView: View {
             .onChange(of: favorites.saveNotice?.id) { _, notice in
                 guard notice != nil else { return }
                 model.selected = nil
+                selectedRoute = nil
                 if replacing != nil { dismiss() }
             }
             .onChange(of: location.updateID) { _, _ in
+                guard selectedRoute == nil else { return }
                 if let point = location.coordinate {
                     let area = TransitMapCamera.locationRegion(center: point)
                     model.region = area; position = TransitMapCamera(region: area); model.query = ""
@@ -83,6 +86,7 @@ struct StationFinderView: View {
                 }
             }
             .task {
+                guard !model.hasSearched else { return }
                 if let replacing, let station = try? await APIClient().resolveStation(id: replacing.configuration.version == 1 ? replacing.configuration.stationId : replacing.configuration.stationId.hasPrefix("gg:") ? replacing.configuration.stationId : replacing.configuration.displayNumber ?? ""),
                    let lat = station.latitude, let lon = station.longitude {
                     let area = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: lat, longitude: lon), span: MKCoordinateSpan(latitudeDelta: 0.015, longitudeDelta: 0.015))
@@ -90,7 +94,9 @@ struct StationFinderView: View {
                 }
                 model.search()
             }
-            .onDisappear { model.cancel() }
+            .navigationDestination(item: $selectedRoute) { route in
+                RouteStopFinderView(route: route, location: location, replacing: replacing, intent: intent)
+            }
             .sheet(item: $model.selected) { station in
                 NavigationStack { StationBusSelectionView(station: station, favorite: replacing, intent: intent) }
                     .presentationDetents([.large])
@@ -158,7 +164,7 @@ struct StationFinderView: View {
                     Capsule().fill(AppTheme.separator).frame(width: 36, height: 4).accessibilityHidden(true)
                 }
                 HStack {
-                    Text("\(model.query.isEmpty ? "주변 정류장" : "검색 결과") · \(model.stations.count)개")
+                    Text("\(model.query.isEmpty ? "주변 정류장" : "검색 결과") · \((model.stations.count + model.routes.count))개")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     if !fullList { Image(systemName: detent == .expanded ? "chevron.down" : "chevron.up") }
@@ -251,9 +257,37 @@ struct StationFinderView: View {
                         Text(error).font(.callout)
                         Button("다시 시도") { model.search() }.frame(minHeight: 44)
                     }.padding(.horizontal, 20)
-                } else if !model.loading && model.stations.isEmpty {
-                    TransitEmptyState(title: "정류장이 없습니다.", symbol: "magnifyingglass",
-                        message: model.query.isEmpty ? "지도를 옮기거나 정류장 이름으로 검색해 주세요." : "다른 정류장 이름이나 번호로 검색해 주세요.")
+                } else if !model.loading && model.stations.isEmpty && model.routes.isEmpty && model.routeWarning == nil {
+                    TransitEmptyState(title: model.query.isEmpty ? "정류장이 없습니다." : "검색 결과가 없습니다.", symbol: "magnifyingglass",
+                        message: model.query.isEmpty ? "지도를 옮기거나 정류장 이름으로 검색해 주세요." : "다른 버스 번호나 정류장 이름으로 검색해 주세요.")
+                }
+                if let warning = model.routeWarning {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(warning).font(.callout)
+                        Button("버스 검색 다시 시도") { model.search() }.frame(minHeight: 44)
+                    }.padding(20)
+                }
+                if !model.routes.isEmpty {
+                    Text("버스").font(.headline).padding(.horizontal, 20).padding(.top, 12)
+                    ForEach(model.routes) { route in
+                        Button { selectedRoute = route } label: {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(route.name).font(.headline).foregroundStyle(AppTheme.text)
+                                    Text([route.region, route.kind].filter { !$0.isEmpty }.joined(separator: " · "))
+                                        .font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                                    Text("\(route.start) ↔ \(route.end)")
+                                        .font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                                }.fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 8)
+                                Image(systemName: "chevron.right").accessibilityHidden(true)
+                            }.frame(minHeight: 44).padding(.horizontal, 20).padding(.vertical, 12).contentShape(Rectangle())
+                        }.buttonStyle(.plain).accessibilityIdentifier("route-result.\(route.id)")
+                        Divider().padding(.horizontal, 20)
+                    }
+                }
+                if !model.query.isEmpty && !model.stations.isEmpty {
+                    Text("정류장").font(.headline).padding(.horizontal, 20).padding(.top, 12)
                 }
                 if model.truncated { Text("정류장이 많습니다. 지도를 확대해 주세요.").font(.callout).padding(20) }
                 LazyVStack(spacing: 0) {

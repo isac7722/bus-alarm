@@ -23,8 +23,14 @@ final class RouteMapUITests: XCTestCase {
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, up: Bool = true) {
         for _ in 0..<18 {
             let actions = ["selection-wait", "save-favorite", "waiting-start"].map { app.buttons[$0] }
-            let bottom = actions.filter { $0.exists && $0.isHittable }.map { $0.frame.minY - 12 }.min() ?? app.frame.maxY - 100
-            let top = (app.navigationBars.allElementsBoundByIndex.last(where: \.isHittable)?.frame.maxY ?? 110) + 12
+            let tabTop = app.tabBars.firstMatch.exists ? app.tabBars.firstMatch.frame.minY : app.frame.maxY
+            var bottom = min(actions.filter { $0.exists && $0.isHittable }.map { $0.frame.minY - 12 }.min() ?? app.frame.maxY - 100, tabTop - 44)
+            var top = (app.navigationBars.allElementsBoundByIndex.last(where: \.isHittable)?.frame.maxY ?? 110) + 12
+            let routeList = app.scrollViews["route-stops"]
+            if routeList.exists {
+                top = max(top, routeList.frame.minY + 8)
+                bottom = min(bottom, routeList.frame.maxY - 16)
+            }
             if element.exists && element.isHittable && element.frame.midY > top && element.frame.midY < bottom { return }
             let scrollUp = element.exists && element.frame.midY < top ? false : up
             let distance = min(140, (bottom - top) * 0.5)
@@ -197,7 +203,7 @@ final class RouteMapUITests: XCTestCase {
         search.tap()
         XCTAssertEqual(handle.value as? String, "펼침")
         search.typeText("9304")
-        XCTAssertTrue(app.staticTexts["정류장이 없습니다."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["route-result.gg:227000040"].waitForExistence(timeout: 5))
         let back = app.buttons["station-search-cancel"]
         XCTAssertTrue(back.isHittable)
         XCTAssertEqual(back.label, "돌아가기")
@@ -296,11 +302,105 @@ final class RouteMapUITests: XCTestCase {
         let app = launch()
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 10))
-        search.tap(); search.typeText("9304")
-        XCTAssertTrue(app.staticTexts["정류장이 없습니다."].waitForExistence(timeout: 8))
+        search.tap(); search.typeText("없는버스")
+        XCTAssertTrue(app.staticTexts["검색 결과가 없습니다."].waitForExistence(timeout: 8))
         XCTAssertFalse(app.staticTexts["서버 응답을 처리할 수 없습니다."].exists)
         attach("station-search-empty")
     }
+    private func searchBus(_ app: XCUIApplication) {
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap(); search.typeText("9304")
+        let route = app.buttons["route-result.gg:227000040"]
+        XCTAssertTrue(route.waitForExistence(timeout: 10))
+        XCTAssertTrue(route.label.contains("하남"))
+        route.tap()
+        XCTAssertTrue(app.staticTexts["어디서 타세요?"].waitForExistence(timeout: 8))
+    }
+
+    func testBusSearchPreselectsBoardingAndSavesWithoutRechoosingBus() {
+        let app = launch()
+        searchBus(app)
+        let stop = app.buttons["route-stop.gg:227000040:104000069:1"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 8))
+        stop.tap()
+        let wait = app.buttons["route-selection-wait"]
+        XCTAssertTrue(wait.waitForExistence(timeout: 5))
+        XCTAssertEqual(wait.label, "9304번 기다리기")
+        XCTAssertTrue(wait.isEnabled)
+        attach("bus-search-selected-stop")
+        saveFavorite(app)
+        let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite.")).firstMatch
+        XCTAssertTrue(card.label.contains("9304"))
+        XCTAssertTrue(card.label.contains("하남 방면"))
+    }
+
+    func testBusSearchAllStopsSupportsRemoteRegistrationAndPreservesSearchOnBack() {
+        let app = launch()
+        searchBus(app)
+        let all = app.segmentedControls.buttons["전체 정류장"]
+        XCTAssertTrue(all.isSelected)
+        let remote = app.buttons["route-stop.gg:227000040:remote:10"]
+        reveal(remote, in: app)
+        XCTAssertTrue(remote.isHittable)
+        remote.tap()
+        XCTAssertTrue(app.buttons["route-selection-wait"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["미리 등록할 회사 정류장"].exists)
+        app.buttons["route-selection-close"].tap()
+        app.navigationBars.buttons.firstMatch.tap()
+        let result = app.buttons["route-result.gg:227000040"]
+        XCTAssertTrue(result.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.searchFields.firstMatch.value as? String, "9304")
+        attach("bus-search-restored-results")
+    }
+
+    func testBusSearchNearbyCanSwitchToWholeRouteWithoutLosingQuery() {
+        let previousLocation = XCUIDevice.shared.location
+        defer { XCUIDevice.shared.location = previousLocation }
+        let app = launch()
+        searchBus(app)
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 37.56675, longitude: 126.978))
+        app.buttons["route-my-location"].tap()
+        let permission = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        if permission.waitForExistence(timeout: 3) {
+            permission.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'While Using' OR label CONTAINS '앱을 사용하는 동안'")).firstMatch.tap()
+        }
+        let nearby = app.segmentedControls.buttons["가까운 정류장"]
+        expectation(for: NSPredicate { _, _ in nearby.isSelected }, evaluatedWith: nil)
+        waitForExpectations(timeout: 12)
+        XCTAssertFalse(app.buttons["route-selection-wait"].exists)
+        XCTAssertFalse(app.buttons["route-stop.gg:227000040:remote:10"].exists)
+        attach("bus-search-nearby")
+        app.segmentedControls.buttons["전체 정류장"].tap()
+        let remote = app.buttons["route-stop.gg:227000040:remote:10"]
+        reveal(remote, in: app)
+        XCTAssertTrue(remote.isHittable)
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.buttons["route-result.gg:227000040"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.searchFields.firstMatch.value as? String, "9304")
+    }
+
+    func testBusSearchDirectionAndDirectWaitAtLargestTextInLandscape() {
+        let app = launch(large: true)
+        searchBus(app)
+        let opposite = app.buttons["route-stop.gg:227000040:104000069:4"]
+        reveal(opposite, in: app)
+        opposite.tap()
+        XCTAssertTrue(app.staticTexts["강변역 방면"].waitForExistence(timeout: 5))
+        let wait = app.buttons["route-selection-wait"]
+        reveal(wait, in: app)
+        XCTAssertTrue(wait.isEnabled)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        reveal(wait, in: app)
+        attach("bus-search-largest-landscape")
+        wait.tap()
+        XCTAssertTrue(app.navigationBars["지금 기다리는 버스"].waitForExistence(timeout: 8))
+        let feedback = app.staticTexts["실시간 현황 서비스를 준비 중입니다. 잠시 후 다시 시도해 주세요."]
+        reveal(feedback, in: app)
+        XCTAssertTrue(feedback.exists)
+    }
+
     func testMyLocationRecentersAndShowsCompactRefresh() {
         verifyMyLocation(dark: false)
     }
