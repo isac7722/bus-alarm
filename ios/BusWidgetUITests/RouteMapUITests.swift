@@ -82,7 +82,7 @@ final class RouteMapUITests: XCTestCase {
         XCTFail("Could not reach \(meters)m scale: \(String(describing: scale.value))")
     }
 
-    func testFindingAndFavoriteCardsRefreshWithoutExtraTaps() {
+    func testFindingRefreshAndFavoriteDetailCountdown() {
         let app = launch(fixturePath: "/refresh")
         openStation(app)
         let option = app.buttons["boarding-option.\(ids[0]):104000069:1"]
@@ -95,10 +95,43 @@ final class RouteMapUITests: XCTestCase {
         option.tap()
         saveFavorite(app)
         let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite.")).firstMatch
-        expectation(for: NSPredicate { _, _ in card.label.contains("4분") }, evaluatedWith: nil)
-        waitForExpectations(timeout: 18)
-        XCTAssertFalse(app.staticTexts["업데이트 중"].exists)
-        attach("favorite-live-arrivals")
+        XCTAssertTrue(card.label.contains("9304"))
+        XCTAssertFalse(card.label.contains("분"))
+        XCTAssertFalse(card.label.contains("도착정보 · 버스 선택"))
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite-menu.")).firstMatch.exists)
+        attach("favorite-route-numbers-only")
+        openFavorite(app)
+        let route = app.staticTexts["waiting-route.gg:227000040"]
+        XCTAssertTrue(route.waitForExistence(timeout: 5))
+        expectation(for: NSPredicate { _, _ in route.label.contains("초 남음") }, evaluatedWith: nil)
+        waitForExpectations(timeout: 8)
+        let initial = route.label
+        expectation(for: NSPredicate { _, _ in route.label != initial && route.label.contains("초 남음") }, evaluatedWith: nil)
+        waitForExpectations(timeout: 4)
+        attach("favorite-detail-countdown")
+        let back = app.buttons["favorite-detail-back"]
+        XCTAssertTrue(back.isHittable)
+        back.tap()
+        XCTAssertTrue(card.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["waiting-start"].exists)
+    }
+
+    func testPartialBoardingListRefreshPreservesSelection() {
+        let app = launch(fixturePath: "/partial")
+        openStation(app)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "일부 노선 정보를")).firstMatch.exists)
+        XCTAssertFalse(app.buttons["다시 시도"].exists)
+        XCTAssertFalse(app.buttons["boarding-option.\(ids[2]):104000069:1"].exists)
+        select(ids[0], in: app)
+        let refresh = app.buttons["boarding-refresh"]
+        reveal(refresh, in: app, up: false)
+        XCTAssertGreaterThanOrEqual(refresh.frame.height, 44)
+        attach("boarding-header-refresh")
+        refresh.tap()
+        let added = app.buttons["boarding-option.\(ids[2]):104000069:1"]
+        XCTAssertTrue(added.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["boarding-option.\(ids[0]):104000069:1"].value as? String, "선택됨")
+        XCTAssertTrue(app.buttons["selection-wait"].isEnabled)
     }
 
     func testFavoriteSwipeDeleteCanBeUndoneAndPersists() {
@@ -121,8 +154,9 @@ final class RouteMapUITests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 3))
         app.terminate(); app.launch()
         XCTAssertTrue(card.waitForExistence(timeout: 5))
-        let menu = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite-menu.")).firstMatch
-        menu.tap(); app.buttons["삭제"].tap()
+        card.swipeLeft()
+        XCTAssertTrue(delete.waitForExistence(timeout: 3))
+        delete.tap()
         XCTAssertTrue(app.buttons["favorite-undo-delete"].waitForExistence(timeout: 3))
         app.terminate(); app.launch()
         app.tabBars.buttons["즐겨찾기"].tap()
@@ -526,7 +560,10 @@ final class RouteMapUITests: XCTestCase {
         defer { XCUIDevice.shared.orientation = .portrait }
         reveal(app.buttons["정류장·버스 변경"], in: app)
         XCTAssertTrue(app.buttons["waiting-start"].isHittable)
+        XCTAssertTrue(app.buttons["favorite-detail-back"].isHittable)
         attach("favorite-largest-type-landscape")
+        app.buttons["favorite-detail-back"].tap()
+        XCTAssertFalse(app.buttons["waiting-start"].exists)
     }
     func testLandscapeStationList() {
         let app = launch()

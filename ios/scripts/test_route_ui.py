@@ -48,12 +48,15 @@ WAITING_OPTIONS = [STOP] + [
 
 class Handler(BaseHTTPRequestHandler):
     refresh_counts = {}
+    boarding_count = 0
     def log_message(self, *_args):
         print("UI fixture:", self.command, self.path, flush=True)
 
     def do_GET(self):
         path = self.path.split("?")[0]
         if path.endswith("/capabilities"):
+            if path.startswith("/partial/"):
+                type(self).boarding_count = 0
             if path.startswith("/refresh/"):
                 self.refresh_counts.clear()
             body = {"route_map": True}
@@ -87,7 +90,13 @@ class Handler(BaseHTTPRequestHandler):
         elif path.endswith("/geometry"):
             body = {"coordinates": [], "source": "stops"}
         elif path.endswith("/boarding-options"):
-            body = {"station": STATION, "options": WAITING_OPTIONS, "complete": True, "warnings": []}
+            type(self).boarding_count += 1
+            partial = path.startswith("/partial/") and type(self).boarding_count == 1
+            body = {
+                "station": STATION, "options": WAITING_OPTIONS[:2] if partial else WAITING_OPTIONS,
+                "complete": not partial,
+                "warnings": ["일부 노선 정보를 확인하지 못했습니다. 전체 목록을 불러오려면 다시 시도해 주세요."] if partial else [],
+            }
         elif path.endswith("/routes/gg:227000040"):
             body = {
                 "route": ROUTE,
@@ -106,6 +115,8 @@ class Handler(BaseHTTPRequestHandler):
         refresh_fixture = path.startswith("/refresh/")
         if refresh_fixture:
             path = path.removeprefix("/refresh")
+        if path.startswith("/partial/"):
+            path = path.removeprefix("/partial")
         if path == "/api/v2/selections/validate":
             self.send({"station": STATION, "selections": body["selections"]})
         elif path == "/api/v2/arrivals":

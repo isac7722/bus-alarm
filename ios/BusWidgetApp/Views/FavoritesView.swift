@@ -122,52 +122,33 @@ private struct FavoriteCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 8) {
-                Button(action: showDetail) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        if !favorite.nickname.isEmpty {
-                            Text(favorite.nickname).font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+            Button(action: showDetail) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if !favorite.nickname.isEmpty {
+                        Text(favorite.nickname).font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                    }
+                    Text(favorite.configuration.stationName).font(.title3.weight(.semibold))
+                        .foregroundStyle(AppTheme.text).fixedSize(horizontal: false, vertical: true)
+                    if let number = favorite.displayNumber {
+                        Text("정류장 \(number)").font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                    }
+                    if !favorite.directions.isEmpty {
+                        Text(favorite.directions.joined(separator: " · "))
+                            .font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    RouteBadgeLayout {
+                        ForEach(favorite.displayRoutes) { route in
+                            Text(route.routeName).font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .foregroundStyle(AppTheme.text)
+                                .background(AppTheme.background, in: RoundedRectangle(cornerRadius: 8))
                         }
-                        Text(favorite.configuration.stationName).font(.title3.weight(.semibold))
-                            .foregroundStyle(AppTheme.text).fixedSize(horizontal: false, vertical: true)
-                        if let number = favorite.displayNumber {
-                            Text("정류장 \(number)").font(.subheadline).foregroundStyle(AppTheme.secondaryText)
-                        }
-                        if !favorite.directions.isEmpty {
-                            Text(favorite.directions.joined(separator: " · "))
-                                .font(.subheadline).foregroundStyle(AppTheme.secondaryText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        RouteBadgeLayout {
-                            ForEach(favorite.displayRoutes) { route in
-                                TimelineView(.periodic(from: .now, by: 1)) { context in
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(route.routeName).font(.subheadline.weight(.semibold))
-                                        Text(arrivals.label(route.routeId, at: context.date))
-                                            .font(.caption).foregroundStyle(AppTheme.action)
-                                            .frame(minWidth: 70, alignment: .leading)
-                                    }.monospacedDigit()
-                                        .padding(.horizontal, 12).padding(.vertical, 8)
-                                        .foregroundStyle(AppTheme.text)
-                                        .background(AppTheme.background, in: RoundedRectangle(cornerRadius: 8))
-                                        .accessibilityElement(children: .combine)
-                                }
-                            }
-                        }.padding(.top, 4)
-                        Label("도착정보 · 버스 선택", systemImage: "chevron.right")
-                            .font(.footnote).foregroundStyle(AppTheme.action)
-                    }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                }.buttonStyle(.plain)
-                 .accessibilityIdentifier("favorite.\(favorite.id)")
-                 .accessibilityHint("등록된 버스의 도착정보를 확인하고 전체 대기를 시작할 수 있습니다.")
-                Menu {
-                    Button("도착정보 · 버스 선택", action: showDetail)
-                    Button("삭제", role: .destructive) { favorites.delete(favorite) }
-                } label: {
-                    Image(systemName: "ellipsis").frame(width: 44, height: 44).contentShape(Rectangle())
-                }.accessibilityLabel("\(favorite.configuration.stationName) 즐겨찾기 관리")
-                 .accessibilityIdentifier("favorite-menu.\(favorite.id)")
-            }
+                    }.padding(.top, 4)
+                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }.buttonStyle(.plain)
+             .accessibilityIdentifier("favorite.\(favorite.id)")
+             .accessibilityHint("등록된 버스의 도착정보를 확인하고 전체 대기를 시작할 수 있습니다.")
             if favorite.hasMissingRouteNames {
                 if favorites.loadingNames.contains(favorite.id) {
                     ProgressView("버스 번호 확인 중…").font(.subheadline)
@@ -256,19 +237,19 @@ struct FavoriteDetailView: View {
             }.listRowBackground(AppTheme.surface)
             Section("기다릴 버스 · \(configuration.routeIds.count)개") {
                 if let routeError { Text(routeError); Button("다시 시도") { Task { await loadRoutes() } }.foregroundStyle(AppTheme.action) }
-                TimelineView(.periodic(from: .now, by: 10)) { context in
+                TimelineView(.periodic(from: .now, by: 1)) { context in
                     ForEach(routes) { route in
                         VStack(alignment: .leading, spacing: 6) {
                             ViewThatFits(in: .horizontal) {
                                 HStack(spacing: 12) {
                                     routeLabel(route)
                                     Spacer(minLength: 8)
-                                    Text(arrivals.label(route.routeId, at: context.date)).monospacedDigit()
+                                    arrivalCountdown(route.routeId, at: context.date).monospacedDigit()
                                         .font(.body.weight(.medium)).fixedSize()
                                 }
                                 VStack(alignment: .leading, spacing: 8) {
                                     routeLabel(route)
-                                    Text(arrivals.label(route.routeId, at: context.date)).monospacedDigit()
+                                    arrivalCountdown(route.routeId, at: context.date).monospacedDigit()
                                         .font(.body.weight(.medium))
                                 }
                             }
@@ -310,7 +291,14 @@ struct FavoriteDetailView: View {
         .transitList()
         .navigationTitle("버스 기다리기")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden()
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { dismiss() } label: { Label("뒤로", systemImage: "chevron.left") }
+                    .accessibilityLabel("뒤로 가기")
+                    .accessibilityIdentifier("favorite-detail-back")
+            }
             if stored != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -345,6 +333,15 @@ struct FavoriteDetailView: View {
         }
         .arrivalPolling(arrivals, configuration: configuration, visible: !showWaiting && !edit)
     }
+    private func arrivalCountdown(_ routeID: String, at date: Date) -> Text {
+        guard let arrival = arrivals.upcoming(routeID, at: date) else {
+            return Text(arrivals.label(routeID, at: date))
+        }
+        let seconds = Int(ceil(arrival.timeIntervalSince(date)))
+        return Text(String(format: "%d:%02d", seconds / 60, seconds % 60))
+            .accessibilityLabel(Text("\(seconds / 60)분 \(seconds % 60)초 남음"))
+    }
+
     private func routeLabel(_ route: RouteSummary) -> some View {
         Text(route.routeName).font(.headline).fixedSize(horizontal: false, vertical: true)
     }

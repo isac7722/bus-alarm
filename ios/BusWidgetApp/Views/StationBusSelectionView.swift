@@ -37,14 +37,14 @@ struct StationBusSelectionView: View {
                 Label("정류장 번호와 버스 방면을 확인해 주세요.", systemImage: "info.circle")
                     .font(.subheadline).foregroundStyle(AppTheme.secondaryText)
             }.listRowBackground(AppTheme.surface)
-            Section("탈 수 있는 버스 · \(model.selections.count)/4 선택") {
-                if model.loading { ProgressView("경유 버스를 불러오는 중…") }
-                if let message = model.error ?? model.warning {
+            Section {
+                if model.loading && model.options.isEmpty { ProgressView("경유 버스를 불러오는 중…") }
+                if let message = model.error {
                     Text(message).font(.callout)
-                    Button("다시 시도") { Task { await model.load() } }.foregroundStyle(AppTheme.action)
                 }
-                if !model.loading && model.options.isEmpty && model.error == nil && model.warning == nil {
-                    Text("이 정류장의 버스가 없습니다.").foregroundStyle(AppTheme.secondaryText)
+                if !model.loading && model.options.isEmpty && model.error == nil {
+                    Text(model.warning == nil ? "이 정류장의 버스가 없습니다." : "버스 목록을 불러오지 못했습니다.")
+                        .foregroundStyle(AppTheme.secondaryText)
                 }
                 ForEach(model.options) { stop in
                     StationArrivalOption(stop: stop, station: model.station,
@@ -52,6 +52,20 @@ struct StationBusSelectionView: View {
                         disabled: model.disabled(stop), refreshEnabled: prepared == nil) {
                             model.toggle(stop); saved = false
                         }
+                }
+            } header: {
+                HStack(spacing: 4) {
+                    Text("탈 수 있는 버스 · \(model.selections.count)/4 선택")
+                    Button { Task { await model.load() } } label: {
+                        Group {
+                            if model.loading { ProgressView().controlSize(.small) }
+                            else { Image(systemName: "arrow.clockwise").font(.subheadline.weight(.medium)) }
+                        }.frame(width: 44, height: 44).contentShape(Rectangle())
+                    }.buttonStyle(.plain).foregroundStyle(AppTheme.action)
+                     .disabled(model.loading || model.busy)
+                     .accessibilityLabel("버스 목록 새로고침")
+                     .accessibilityIdentifier("boarding-refresh")
+                    Spacer(minLength: 0)
                 }
             }.listRowBackground(AppTheme.surface)
             if !model.selections.isEmpty {
