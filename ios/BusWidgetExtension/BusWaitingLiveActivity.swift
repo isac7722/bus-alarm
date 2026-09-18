@@ -89,10 +89,12 @@ private struct WaitingCountdown: View {
 
 
     var body: some View {
-        if state.status == "waiting", let arrival = state.arrivalDate, arrival > .now {
-            // Keep the proposed width: fixedSize() can blank an ActivityKit timer.
-            Text(timerInterval: Date.now...arrival, countsDown: true)
+        if state.status == "waiting", let arrival = state.arrivalDate {
+            // ActivityKit redraws on app/APNs updates and the imminent stale-date.
+            // TimelineView/custom format styles do not provide a background clock here.
+            Text(ArrivalCountdownFormatter.text(arrivalAt: arrival, relativeTo: .now))
                 .monospacedDigit().multilineTextAlignment(.trailing)
+                .lineLimit(1).minimumScaleFactor(0.6)
         } else {
             Text(message).lineLimit(1).minimumScaleFactor(0.7)
         }

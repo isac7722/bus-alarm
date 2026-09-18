@@ -44,7 +44,7 @@ final class ArrivalRepositoryTests: XCTestCase {
         XCTAssertEqual(repo.cached(configuration)?.arrivals.last?.predictions.count, 1)
     }
     @MainActor
-    func testFailureKeepsSixMinuteOldCountdownUntilActualETA() async throws {
+    func testFailureKeepsCountdownAndImminentLabelAfterETA() async throws {
         let repo = ArrivalRepository(api: nil, storage: nil)
         let now = Date()
         repo.save(response(["a"], at: now.addingTimeInterval(-360)), for: configuration)
@@ -52,13 +52,17 @@ final class ArrivalRepositoryTests: XCTestCase {
         await model.refresh(configuration)
         XCTAssertNotNil(model.error)
         XCTAssertNotNil(model.upcoming("a", at: now))
-        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(241)), "다시 연결 중")
+        XCTAssertEqual(model.label("a", at: now), "4분")
+        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(209)), "1분")
+        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(210)), "곧 도착")
+        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(241)), "곧 도착")
     }
     func testLiveRevisionAndExpiryPolicy() {
         let old = BusWaitingAttributes.ContentState(status: "waiting", arrivalAt: 1800, remainingStops: 2, updatedAt: 900, revision: 10)
         XCTAssertEqual(old.message(isStale: true, relativeTo: Date(timeIntervalSince1970: 1500)), "도착까지")
-        XCTAssertEqual(old.message(relativeTo: Date(timeIntervalSince1970: 1801)), "다시 연결 중")
-        XCTAssertEqual(old.nextTransition(after: Date(timeIntervalSince1970: 1500)), Date(timeIntervalSince1970: 1800))
+        XCTAssertEqual(old.message(relativeTo: Date(timeIntervalSince1970: 1801)), "곧 도착")
+        XCTAssertEqual(old.nextTransition(after: Date(timeIntervalSince1970: 1500)), Date(timeIntervalSince1970: 1770))
+        XCTAssertNil(old.nextTransition(after: Date(timeIntervalSince1970: 1770)))
         var newer = old; newer.revision = 11
         XCTAssertTrue(newer.supersedes(old))
         XCTAssertFalse(old.supersedes(newer))
@@ -67,6 +71,23 @@ final class ArrivalRepositoryTests: XCTestCase {
         XCTAssertTrue(ended.supersedes(newer))
         let preview = BusWaitingAttributes.ContentState(status: "waiting", arrivalAt: 1900, remainingStops: 2, updatedAt: 1000)
         XCTAssertTrue(old.supersedes(preview), "Tracked server state takes precedence over the unregistered preview")
+    }
+
+    @MainActor
+    func testElapsedClockDoesNotSwitchToFollowingBusInSameSnapshot() async {
+        let repo = ArrivalRepository(api: nil, storage: nil)
+        let now = Date()
+        var snapshot = response(["a"], at: now, eta: 60)
+        let first = snapshot.arrivals[0].predictions[0]
+        let following = ArrivalPrediction(order: 2, arrivalAt: now.addingTimeInterval(300),
+                                          remainingSeconds: 300, remainingStops: 5, vehicleStatus: .running)
+        snapshot = ArrivalsResponse(station: snapshot.station, updatedAt: now, fetchedAt: now,
+            arrivals: [.init(routeId: "a", routeName: "a", predictions: [first, following])])
+        repo.save(snapshot, for: configuration)
+        let model = CommuteArrivalsModel(repository: repo)
+        await model.refresh(configuration)
+        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(61)), "곧 도착")
+        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(301)), "곧 도착")
     }
     @MainActor
     func testConcurrentFetchesCoalesceAndFailureRetainsCache() async throws {

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestLiveGroupContinuesAfterFirstArrival(t *testing.T) {
+func TestLiveGroupKeepsZeroETAUntilFirstBusPasses(t *testing.T) {
 	now := time.Now().Truncate(time.Second)
 	s := LiveSession{ExpiresAt: now.Add(time.Hour).Unix()}
 	for i, id := range []string{"first", "second", "missing"} {
@@ -28,7 +28,13 @@ func TestLiveGroupContinuesAfterFirstArrival(t *testing.T) {
 	}
 	s.Routes[0].advance(LiveSnapshot{now, map[string][]LiveBus{"first": {liveBus(now, "first", 0)}}}, now)
 	s.aggregate(now)
-	if s.Ended || s.Content.Routes[0].Content.Status != "arrived" || *s.Content.ArrivalAt != float64(now.Add(3*time.Minute).Unix()) {
+	if s.Ended || s.Content.Routes[0].Content.Status != "waiting" || *s.Content.ArrivalAt != float64(now.Unix()) {
+		t.Fatal(s)
+	}
+	later := now.Add(time.Second)
+	s.Routes[0].advance(LiveSnapshot{later, map[string][]LiveBus{"first": {liveBus(later, "following", 300)}}}, later)
+	s.aggregate(later)
+	if s.Ended || s.Content.Routes[0].Content.Status != "passed" || *s.Content.ArrivalAt != float64(now.Add(3*time.Minute).Unix()) {
 		t.Fatal(s)
 	}
 	// A transport outage keeps the remaining last-known countdown.
@@ -195,8 +201,8 @@ func TestLiveGroupDoesNotExtendSourceFreshness(t *testing.T) {
 		APS map[string]any `json:"aps"`
 	}
 	json.Unmarshal(livePayload(s, now), &payload)
-	if payload.APS["stale-date"] != at {
-		t.Fatal("next presentation boundary must be the ETA", payload)
+	if payload.APS["stale-date"] != at-30 {
+		t.Fatal("next presentation boundary must be 30 seconds before ETA", payload)
 	}
 	// Source age is preserved even while an old ETA remains visible.
 	s.Routes[0].Content.UpdatedAt = old - 60

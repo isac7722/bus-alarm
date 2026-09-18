@@ -48,7 +48,7 @@ func TestLiveWaitFreshnessAndExpiry(t *testing.T) {
 		status   string
 		ended    bool
 	}{
-		{"zero confirms arrival", LiveSnapshot{now, map[string][]LiveBus{"route": {liveBus(now, "bus", 0)}}}, now.Add(time.Hour).Unix(), "arrived", true},
+		{"zero remains imminent", LiveSnapshot{now, map[string][]LiveBus{"route": {liveBus(now, "bus", 0)}}}, now.Add(time.Hour).Unix(), "waiting", false},
 		{"stale is not arrival", LiveSnapshot{now.Add(-2 * time.Minute), map[string][]LiveBus{"route": {liveBus(now, "bus", 0)}}}, now.Add(time.Hour).Unix(), "unavailable", false},
 		{"upstream outage", LiveSnapshot{}, now.Add(time.Hour).Unix(), "unavailable", false},
 		{"timeout during outage", LiveSnapshot{}, now.Unix(), "expired", true},
@@ -61,6 +61,49 @@ func TestLiveWaitFreshnessAndExpiry(t *testing.T) {
 				t.Fatal(s)
 			}
 		})
+	}
+}
+
+func TestLiveCountdownPushesAtDisplayBoundaries(t *testing.T) {
+	now := time.Unix(1000, 0)
+	for _, tc := range []struct{ remaining, delay int64 }{
+		{222, 10}, {181, 1}, {180, 10}, {121, 1}, {61, 1},
+		{60, 10}, {39, 9}, {31, 1}, {30, 10}, {0, 10}, {-60, 10},
+	} {
+		at := float64(now.Unix() + tc.remaining)
+		s := LiveSession{Content: LiveContent{Status: "waiting", ArrivalAt: &at}}
+		s.schedulePush(now, nil)
+		if s.NextPushAt != now.Unix()+tc.delay {
+			t.Fatalf("remaining %d: got next push %d", tc.remaining, s.NextPushAt)
+		}
+	}
+	// Each route can reach a boundary before the group's nearest route does.
+	at := float64(now.Unix() + 61)
+	s := LiveSession{Content: LiveContent{Status: "waiting", Routes: []LiveRouteContent{
+		{RouteID: "next", Content: LiveContent{Status: "waiting", ArrivalAt: &at}},
+	}}}
+	s.schedulePush(now, nil)
+	if s.NextPushAt != now.Unix()+1 {
+		t.Fatal("missed route boundary", s.NextPushAt)
+	}
+}
+
+func TestLiveZeroETARemainsWaitingDuringTransportOutage(t *testing.T) {
+	now := time.Now().Truncate(time.Second)
+	s := LiveSession{RouteID: "route", ExpiresAt: now.Add(time.Hour).Unix()}
+	s.advance(LiveSnapshot{now, map[string][]LiveBus{"route": {liveBus(now, "bus", 0)}}}, now)
+	s.advance(LiveSnapshot{}, now.Add(time.Minute))
+	if s.Ended || s.Content.Status != "waiting" || s.Content.ArrivalAt == nil || *s.Content.ArrivalAt != float64(now.Unix()) {
+		t.Fatal("zero ETA must remain imminent", s)
+	}
+	var payload struct {
+		APS map[string]any `json:"aps"`
+	}
+	if err := json.Unmarshal(livePayload(s, now.Add(time.Minute)), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.APS["event"] != "update" {
+		t.Fatal("zero ETA ended the activity", payload)
 	}
 }
 func TestParseLiveSnapshotRetainsVehicleWithoutChangingPublicJSON(t *testing.T) {

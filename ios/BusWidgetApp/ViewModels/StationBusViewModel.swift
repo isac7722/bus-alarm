@@ -115,9 +115,11 @@ final class CommuteArrivalsModel: ObservableObject {
         return arrival
     }
     func label(_ routeID: String, at date: Date) -> String {
-        if let arrival = upcoming(routeID, at: date) {
-            let seconds = Int(ceil(arrival.timeIntervalSince(date)))
-            return seconds < 60 ? "곧 도착" : "\(Int(ceil(Double(seconds) / 60)))분"
+        if let response, response.updatedAt <= date.addingTimeInterval(30),
+           let prediction = response.arrivals.first(where: { $0.routeId == routeID })?.nearestPrediction(
+               relativeTo: response.routeUpdatedAt?[routeID] ?? response.updatedAt),
+           prediction.vehicleStatus == .running, let arrival = prediction.arrivalAt {
+            return ArrivalCountdownFormatter.text(arrivalAt: arrival, relativeTo: date)
         }
         if loading && response == nil { return "확인 중" }
         if error != nil && response == nil { return "조회 실패" }

@@ -51,21 +51,17 @@ final class ModelsTests: XCTestCase {
         )
     }
 
-    func testArrivalCountdownUsesCompactKoreanMinutes() {
+    func testArrivalCountdownRoundsUpAndKeepsImminentAfterZero() {
         let now = Date(timeIntervalSince1970: 1_000)
-
-        XCTAssertEqual(
-            ArrivalCountdownFormatter.text(for: prediction(at: now.addingTimeInterval(149)), relativeTo: now),
-            "2분"
-        )
-        XCTAssertEqual(
-            ArrivalCountdownFormatter.text(for: prediction(at: now.addingTimeInterval(59)), relativeTo: now),
-            "곧"
-        )
-        XCTAssertEqual(
-            ArrivalCountdownFormatter.text(for: prediction(at: now), relativeTo: now),
-            "도착"
-        )
+        let cases: [(TimeInterval, String)] = [
+            (222, "4분"), (180, "3분"), (130, "3분"), (120, "2분"),
+            (70, "2분"), (60.001, "2분"), (60, "1분"), (31, "1분"),
+            (30.001, "1분"), (30, "곧 도착"), (1, "곧 도착"), (0, "곧 도착"), (-300, "곧 도착")
+        ]
+        for (seconds, expected) in cases {
+            XCTAssertEqual(ArrivalCountdownFormatter.text(for: prediction(at: now.addingTimeInterval(seconds)), relativeTo: now),
+                           expected, "Remaining seconds: \(seconds)")
+        }
     }
 
     func testArrivalCountdownHandlesNonRunningStates() {

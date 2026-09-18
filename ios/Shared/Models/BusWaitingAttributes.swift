@@ -21,17 +21,20 @@ struct BusWaitingAttributes: ActivityAttributes {
             case "cancelled": return "대기를 종료했습니다"
             case "finished": return "모든 버스의 대기가 종료되었습니다"
             default:
-                if status == "unavailable" || arrivalDate == nil || arrivalDate! <= date { return "다시 연결 중" }
+                if status == "unavailable" || arrivalDate == nil { return "다시 연결 중" }
+                if arrivalDate!.timeIntervalSince(date) <= ArrivalCountdownFormatter.imminentInterval { return "곧 도착" }
                 return "도착까지"
             }
         }
 
         var isEnded: Bool { ["arrived", "passed", "expired", "cancelled", "finished"].contains(status) }
 
-        /// Age does not stop a last-known countdown. The next ETA is the system's next presentation boundary.
+        /// Request a system redraw when a waiting route enters the imminent window.
         func nextTransition(after date: Date = .now) -> Date? {
             let states = routes?.map(\.content) ?? [self]
-            return states.filter { $0.status == "waiting" }.compactMap(\.arrivalDate).filter { $0 > date }.min()
+            return states.filter { $0.status == "waiting" }.compactMap(\.arrivalDate)
+                .map { $0.addingTimeInterval(-ArrivalCountdownFormatter.imminentInterval) }
+                .filter { $0 > date }.min()
         }
         func supersedes(_ old: ContentState) -> Bool {
             if old.isEnded { return false }
@@ -47,7 +50,7 @@ struct BusWaitingAttributes: ActivityAttributes {
         func nearestRoute(relativeTo date: Date = .now) -> RouteState? {
             routes?.filter {
                 $0.content.status == "waiting"
-                    && ($0.content.arrivalAt ?? 0) > date.timeIntervalSince1970
+                    && $0.content.arrivalAt != nil
             }.min { ($0.content.arrivalAt ?? .infinity) < ($1.content.arrivalAt ?? .infinity) }
         }
 

@@ -192,7 +192,7 @@ func (s *LiveSession) aggregate(now time.Time) {
 		if !child.Ended && c.UpdatedAt > 0 && (content.UpdatedAt == 0 || c.UpdatedAt < content.UpdatedAt) {
 			content.UpdatedAt = c.UpdatedAt
 		}
-		if !child.Ended && c.Status == "waiting" && c.ArrivalAt != nil && *c.ArrivalAt > float64(now.Unix()) {
+		if !child.Ended && c.Status == "waiting" && c.ArrivalAt != nil {
 			if content.ArrivalAt == nil || *c.ArrivalAt < *content.ArrivalAt {
 				content.Status, content.ArrivalAt, content.RemainingStops = "waiting", c.ArrivalAt, c.RemainingStops
 			}

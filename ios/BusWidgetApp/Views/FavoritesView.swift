@@ -334,12 +334,7 @@ struct FavoriteDetailView: View {
         .arrivalPolling(arrivals, configuration: configuration, visible: !showWaiting && !edit)
     }
     private func arrivalCountdown(_ routeID: String, at date: Date) -> Text {
-        guard let arrival = arrivals.upcoming(routeID, at: date) else {
-            return Text(arrivals.label(routeID, at: date))
-        }
-        let seconds = Int(ceil(arrival.timeIntervalSince(date)))
-        return Text(String(format: "%d:%02d", seconds / 60, seconds % 60))
-            .accessibilityLabel(Text("\(seconds / 60)분 \(seconds % 60)초 남음"))
+        Text(arrivals.label(routeID, at: date))
     }
 
     private func routeLabel(_ route: RouteSummary) -> some View {
@@ -385,9 +380,12 @@ struct ActiveCommuteView: View {
                             HStack {
                                 Text(route.routeName).font(.headline)
                                 Spacer()
-                                if let arrival = waiting.preview?.arrivals.first(where: { $0.routeId == route.routeId })?.nearestPrediction(relativeTo: context.date)?.arrivalAt,
-                                   arrival > context.date {
-                                    Text(timerInterval: context.date...arrival, countsDown: true).monospacedDigit().frame(width: 88)
+                                if let preview = waiting.preview,
+                                   let prediction = preview.arrivals.first(where: { $0.routeId == route.routeId })?.nearestPrediction(
+                                       relativeTo: preview.routeUpdatedAt?[route.routeId] ?? preview.updatedAt),
+                                   prediction.vehicleStatus == .running, let arrival = prediction.arrivalAt {
+                                    Text(ArrivalCountdownFormatter.text(arrivalAt: arrival, relativeTo: context.date))
+                                        .monospacedDigit().frame(width: 88)
                                 } else { Text("확인 중").foregroundStyle(AppTheme.secondaryText) }
                             }
                         }

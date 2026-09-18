@@ -63,7 +63,7 @@ func TestExpiredCachedGroupDoesNotInventNewSourceTimestamp(t *testing.T) {
 	at := float64(now.Add(-time.Minute).Unix())
 	session := LiveSession{ExpiresAt: now.Add(time.Hour).Unix(), Routes: []LiveSession{{RouteID: "route", Content: LiveContent{Status: "waiting", ArrivalAt: &at, UpdatedAt: float64(old.Unix())}}}}
 	session.aggregate(now)
-	if session.Content.Status != "unavailable" || session.Content.UpdatedAt != float64(old.Unix()) || session.Ended {
+	if session.Content.Status != "waiting" || session.Content.UpdatedAt != float64(old.Unix()) || session.Ended {
 		t.Fatal(session)
 	}
 }
@@ -95,6 +95,17 @@ func TestForegroundSessionReadPreservesTrackedVehicleAndCancellation(t *testing.
 	json.Unmarshal(raw, &session)
 	if session.VehicleID != "tracked" || session.Content.Revision == 0 || session.NextPushAt != now.Add(10*time.Second).Unix() {
 		t.Fatal(session)
+	}
+	// A minute boundary redraw must not require another upstream fetch.
+	previousRevision, previousUpdatedAt, previousCalls := session.Content.Revision, session.Content.UpdatedAt, source.calls
+	session.NextPushAt = 0
+	session.NextRefreshAt = now.Add(time.Minute).Unix()
+	raw, _ = json.Marshal(session)
+	redis.Set(ctx, key, raw, time.Hour)
+	h.Live.process(ctx, key, map[string]LiveSnapshot{})
+	if len(pusher.sessions) != 1 || pusher.sessions[0].Content.Revision <= previousRevision ||
+		pusher.sessions[0].Content.UpdatedAt != previousUpdatedAt || source.calls != previousCalls {
+		t.Fatal("display update must advance revision without changing source data", pusher.sessions)
 	}
 	req = httptest.NewRequest("DELETE", "/api/v1/live-activities", nil)
 	req.Header.Set("Authorization", "Bearer "+secret)

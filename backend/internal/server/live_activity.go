@@ -345,6 +345,9 @@ func (l *LiveActivities) processSession(ctx context.Context, key string, snapsho
 		if e != nil || latest != string(raw) {
 			return
 		}
+		// A display-boundary push may precede the next upstream refresh. Give it
+		// a new revision so ActivityKit redraws even when the ETA is unchanged.
+		session.Content.Revision = max(session.Content.Revision+1, time.Now().UnixMilli())
 		invalid, pushErr := l.Pusher.Push(ctx, session)
 		session.schedulePush(time.Now(), pushErr)
 		if pushErr != nil {

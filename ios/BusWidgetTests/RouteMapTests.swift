@@ -82,7 +82,7 @@ final class RouteMapTests: XCTestCase {
         await model.refresh(config)
         XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1030)), "2분")
         XCTAssertNotNil(model.upcoming("gg:227000040", at: Date(timeIntervalSince1970: 1091)))
-        XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1121)), "다시 연결 중")
+        XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1121)), "곧 도착")
         await model.refresh(config.selecting([]))
         XCTAssertNil(model.response)
         XCTAssertFalse(model.loading)

@@ -134,8 +134,8 @@ struct BusWaitingView: View {
 
     @ViewBuilder
     private func arrivalLabel(_ state: BusWaitingAttributes.ContentState, date: Date) -> some View {
-        if state.status == "waiting", let arrival = state.arrivalDate, arrival > date {
-            Text(timerInterval: date...arrival, countsDown: true)
+        if state.status == "waiting", let arrival = state.arrivalDate {
+            Text(ArrivalCountdownFormatter.text(arrivalAt: arrival, relativeTo: date))
                 .monospacedDigit().foregroundStyle(AppTheme.primary)
                 .frame(width: countdownWidth, alignment: .trailing)
         } else {

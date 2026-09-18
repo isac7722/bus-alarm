@@ -12,8 +12,8 @@ final class LiveActivityTests: XCTestCase {
         XCTAssertEqual(state.arrivalDate?.timeIntervalSince1970, 1_789_426_980)
         XCTAssertEqual(state.remainingStops, 2)
         XCTAssertEqual(state.message(relativeTo: Date(timeIntervalSince1970: state.updatedAt)), "도착까지")
-        XCTAssertEqual(state.message(relativeTo: Date(timeIntervalSince1970: 1_789_426_981)), "다시 연결 중")
-        XCTAssertEqual(state.message(isStale: true), "다시 연결 중")
+        XCTAssertEqual(state.message(relativeTo: Date(timeIntervalSince1970: 1_789_426_981)), "곧 도착")
+        XCTAssertEqual(state.message(isStale: true, relativeTo: Date(timeIntervalSince1970: 1_789_427_000)), "곧 도착")
         XCTAssertFalse(state.isEnded)
     }
 
@@ -52,20 +52,21 @@ final class LiveActivityTests: XCTestCase {
             XCTAssertEqual(state.nearestRoute(relativeTo: now)?.routeId, "stale")
             XCTAssertEqual(state.summary(relativeTo: now).arrivalAt, 1_789_426_801)
             XCTAssertEqual(state.state(for: "arrived").status, "arrived")
-            XCTAssertEqual(state.summary(relativeTo: now.addingTimeInterval(301)).status, "unavailable")
+            XCTAssertEqual(state.summary(relativeTo: now.addingTimeInterval(301)).status, "waiting")
             let ended = BusWaitingAttributes.ContentState(status: "cancelled", arrivalAt: nil, remainingStops: nil, updatedAt: now.timeIntervalSince1970, routes: state.routes)
             XCTAssertEqual(ended.state(for: "nearest").status, "cancelled")
         }
     }
 
-    func testGroupSkipsPastETAAndFallsBackWithoutClaimingArrival() {
+    func testGroupKeepsPastETAImminentUntilTrackedRouteEnds() {
         let now = Date(timeIntervalSince1970: 1000)
         let state = BusWaitingAttributes.ContentState(status: "waiting", arrivalAt: 999, remainingStops: 0, updatedAt: 1000, routes: [
             .init(routeId: "past", content: .init(status: "waiting", arrivalAt: 999, remainingStops: 0, updatedAt: 1000)),
             .init(routeId: "next", content: .init(status: "waiting", arrivalAt: 1010, remainingStops: 1, updatedAt: 1000))
         ])
-        XCTAssertEqual(state.nearestRoute(relativeTo: now)?.routeId, "next")
-        XCTAssertEqual(state.summary(relativeTo: now.addingTimeInterval(11)).status, "unavailable")
+        XCTAssertEqual(state.nearestRoute(relativeTo: now)?.routeId, "past")
+        XCTAssertEqual(state.summary(relativeTo: now.addingTimeInterval(11)).status, "waiting")
+        XCTAssertEqual(state.summary(relativeTo: now).message(relativeTo: now), "곧 도착")
         XCTAssertFalse(state.isEnded)
     }
 

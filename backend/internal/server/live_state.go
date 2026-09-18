@@ -161,8 +161,6 @@ func (s *LiveSession) advance(snapshot LiveSnapshot, now time.Time) {
 	s.LastArrivalAt = p.ArrivalAt.Unix()
 	at := float64(p.ArrivalAt.Unix())
 	s.Content = LiveContent{Status: "waiting", ArrivalAt: &at, RemainingStops: p.RemainingStops, UpdatedAt: float64(snapshot.UpdatedAt.Unix())}
-	if p.RemainingSeconds != nil && *p.RemainingSeconds == 0 {
-		s.Content.Status = "arrived"
-		s.Ended = true
-	}
+	// A zero ETA is still an estimate: keep showing imminent arrival until the
+	// tracked vehicle passes, the user cancels, or the waiting session expires.
 }

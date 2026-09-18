@@ -109,11 +109,10 @@ final class RouteMapUITests: XCTestCase {
         openFavorite(app)
         let route = app.staticTexts["waiting-route.gg:227000040"]
         XCTAssertTrue(route.waitForExistence(timeout: 5))
-        expectation(for: NSPredicate { _, _ in route.label.contains("초 남음") }, evaluatedWith: nil)
+        expectation(for: NSPredicate { _, _ in route.label.contains("분") }, evaluatedWith: nil)
         waitForExpectations(timeout: 8)
-        let initial = route.label
-        expectation(for: NSPredicate { _, _ in route.label != initial && route.label.contains("초 남음") }, evaluatedWith: nil)
-        waitForExpectations(timeout: 4)
+        XCTAssertFalse(route.label.contains("초 남음"))
+        XCTAssertFalse(route.label.contains(":"))
         attach("favorite-detail-countdown")
         let back = app.buttons["favorite-detail-back"]
         XCTAssertTrue(back.isHittable)
