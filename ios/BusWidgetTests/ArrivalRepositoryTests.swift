@@ -52,17 +52,17 @@ final class ArrivalRepositoryTests: XCTestCase {
         await model.refresh(configuration)
         XCTAssertNotNil(model.error)
         XCTAssertNotNil(model.upcoming("a", at: now))
-        XCTAssertEqual(model.label("a", at: now), "4분")
-        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(209)), "1분")
-        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(210)), "곧 도착")
+        XCTAssertEqual(model.label("a", at: now), "4:00")
+        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(209)), "0:31")
+        XCTAssertEqual(model.label("a", at: now.addingTimeInterval(210)), "0:30")
         XCTAssertEqual(model.label("a", at: now.addingTimeInterval(241)), "곧 도착")
     }
     func testLiveRevisionAndExpiryPolicy() {
         let old = BusWaitingAttributes.ContentState(status: "waiting", arrivalAt: 1800, remainingStops: 2, updatedAt: 900, revision: 10)
         XCTAssertEqual(old.message(isStale: true, relativeTo: Date(timeIntervalSince1970: 1500)), "도착까지")
         XCTAssertEqual(old.message(relativeTo: Date(timeIntervalSince1970: 1801)), "곧 도착")
-        XCTAssertEqual(old.nextTransition(after: Date(timeIntervalSince1970: 1500)), Date(timeIntervalSince1970: 1770))
-        XCTAssertNil(old.nextTransition(after: Date(timeIntervalSince1970: 1770)))
+        XCTAssertEqual(old.nextTransition(after: Date(timeIntervalSince1970: 1500)), Date(timeIntervalSince1970: 1800))
+        XCTAssertNil(old.nextTransition(after: Date(timeIntervalSince1970: 1800)))
         var newer = old; newer.revision = 11
         XCTAssertTrue(newer.supersedes(old))
         XCTAssertFalse(old.supersedes(newer))

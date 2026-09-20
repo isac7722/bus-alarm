@@ -191,6 +191,10 @@ final class TransitMarkerTests: XCTestCase {
         XCTAssertEqual(TransitMarkerDetail.neighborhood.diameter(selected: false, clustered: false), 28)
         XCTAssertEqual(TransitMarkerDetail.street.diameter(selected: false, clustered: false), 32)
         XCTAssertEqual(TransitMarkerDetail.overview.diameter(selected: true, clustered: true), 36)
+        button.present(detail: .overview, count: 1, selected: false, emphasized: true)
+        XCTAssertFalse(button.isSelected)
+        XCTAssertFalse(button.accessibilityTraits.contains(.selected), "The nearest stop is not a boarding selection")
+        XCTAssertEqual(button.bounds.width, 44)
     }
 }
 

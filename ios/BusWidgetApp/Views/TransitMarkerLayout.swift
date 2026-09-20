@@ -181,6 +181,7 @@ final class TransitMarkerButton: UIButton {
     private let glyph = UIImageView()
     private let countLabel = UILabel()
     private var presentation = ""
+    private var emphasized = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -210,19 +211,20 @@ final class TransitMarkerButton: UIButton {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func present(detail: TransitMarkerDetail, count: Int, selected: Bool) {
-        let next = "\(detail.rawValue)-\(count)-\(selected)"
+    func present(detail: TransitMarkerDetail, count: Int, selected: Bool, emphasized: Bool = false) {
+        let next = "\(detail.rawValue)-\(count)-\(selected)-\(emphasized)"
         guard next != presentation else { return }
         let animate = !presentation.isEmpty && !UIAccessibility.isReduceMotionEnabled
         presentation = next
         isSelected = selected
+        self.emphasized = emphasized
         updateColors()
-        face.layer.borderWidth = selected ? 2 : 1.5
+        face.layer.borderWidth = selected || emphasized ? 2 : 1.5
         glyph.image = UIImage(systemName: "bus.fill")
         countLabel.text = count > 1 ? String(count) : "✓"
         countLabel.isHidden = count == 1 && !selected
         accessibilityTraits = selected ? [.button, .selected] : [.button]
-        let size = detail.diameter(selected: selected, clustered: count > 1)
+        let size = detail.diameter(selected: selected || emphasized, clustered: count > 1)
         let changes = { self.face.transform = CGAffineTransform(scaleX: size / 36, y: size / 36) }
         if animate { UIView.animate(withDuration: 0.18, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction], animations: changes) }
         else { changes() }
@@ -231,9 +233,9 @@ final class TransitMarkerButton: UIButton {
         let action = TransitColors.action.resolvedColor(with: traitCollection)
         let surface = TransitColors.surface.resolvedColor(with: traitCollection)
         let onAction = TransitColors.onAction.resolvedColor(with: traitCollection)
-        face.backgroundColor = isSelected ? action : surface
+        face.backgroundColor = isSelected || emphasized ? action : surface
         face.layer.borderColor = action.cgColor
-        glyph.tintColor = isSelected ? onAction : action
+        glyph.tintColor = isSelected || emphasized ? onAction : action
         countLabel.textColor = onAction
         countLabel.backgroundColor = action
         countLabel.layer.borderColor = surface.cgColor

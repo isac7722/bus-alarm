@@ -67,8 +67,8 @@ func TestLiveWaitFreshnessAndExpiry(t *testing.T) {
 func TestLiveCountdownPushesAtDisplayBoundaries(t *testing.T) {
 	now := time.Unix(1000, 0)
 	for _, tc := range []struct{ remaining, delay int64 }{
-		{222, 10}, {181, 1}, {180, 10}, {121, 1}, {61, 1},
-		{60, 10}, {39, 9}, {31, 1}, {30, 10}, {0, 10}, {-60, 10},
+		{222, 10}, {181, 10}, {180, 10}, {121, 10}, {61, 10},
+		{60, 10}, {39, 10}, {31, 10}, {30, 10}, {9, 9}, {1, 1}, {0, 10}, {-60, 10},
 	} {
 		at := float64(now.Unix() + tc.remaining)
 		s := LiveSession{Content: LiveContent{Status: "waiting", ArrivalAt: &at}}
@@ -78,7 +78,7 @@ func TestLiveCountdownPushesAtDisplayBoundaries(t *testing.T) {
 		}
 	}
 	// Each route can reach a boundary before the group's nearest route does.
-	at := float64(now.Unix() + 61)
+	at := float64(now.Unix() + 1)
 	s := LiveSession{Content: LiveContent{Status: "waiting", Routes: []LiveRouteContent{
 		{RouteID: "next", Content: LiveContent{Status: "waiting", ArrivalAt: &at}},
 	}}}
@@ -104,6 +104,87 @@ func TestLiveZeroETARemainsWaitingDuringTransportOutage(t *testing.T) {
 	}
 	if payload.APS["event"] != "update" {
 		t.Fatal("zero ETA ended the activity", payload)
+	}
+}
+
+func TestLiveImminentSurvivesETARevisionMissingDataAndRestoreUntilPassage(t *testing.T) {
+	now := time.Unix(1000, 0)
+	s := LiveSession{RouteID: "route", ExpiresAt: now.Add(time.Hour).Unix()}
+	s.advance(LiveSnapshot{now, map[string][]LiveBus{"route": {liveBus(now, "tracked", 1)}}}, now)
+	zero := now.Add(time.Second)
+	s.advance(LiveSnapshot{zero, map[string][]LiveBus{"route": {liveBus(zero, "tracked", 90)}}}, zero)
+	assertImminent := func() {
+		t.Helper()
+		if s.Ended || s.Content.Status != "waiting" || s.Content.ArrivalAt == nil || *s.Content.ArrivalAt != float64(zero.Unix()) {
+			t.Fatal("imminent display was reset", s)
+		}
+	}
+	assertImminent()
+	if s.LastArrivalAt != zero.Add(90*time.Second).Unix() {
+		t.Fatal("passage must use the actual revised ETA", s)
+	}
+	// Redis persistence must carry the latch without needing a new public API field.
+	raw, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s = LiveSession{}
+	if err := json.Unmarshal(raw, &s); err != nil {
+		t.Fatal(err)
+	}
+	for _, snapshot := range []LiveSnapshot{
+		{},
+		{UpdatedAt: zero.Add(time.Second)},
+		{zero.Add(2 * time.Second), map[string][]LiveBus{"route": {liveBus(zero, "tracked", -60)}}},
+		// A following bus alone is not enough while the actual ETA is still far away.
+		{zero.Add(3 * time.Second), map[string][]LiveBus{"route": {liveBus(zero, "following", 300)}}},
+	} {
+		s.advance(snapshot, zero.Add(3*time.Second))
+		assertImminent()
+	}
+	later := zero.Add(75 * time.Second)
+	s.advance(LiveSnapshot{later, map[string][]LiveBus{"route": {liveBus(later, "following", 300)}}}, later)
+	if !s.Ended || s.Content.Status != "passed" {
+		t.Fatal("existing passage heuristic must still end the latched wait", s)
+	}
+}
+
+func TestLiveETARevisionBeforeZeroStillUpdatesAndGroupedLatchesAreIndependent(t *testing.T) {
+	now := time.Unix(1000, 0)
+	group := LiveSession{ExpiresAt: now.Add(time.Hour).Unix()}
+	for i, seconds := range []int{0, 30} {
+		s := LiveSession{RouteID: fmt.Sprint(i), ExpiresAt: group.ExpiresAt}
+		s.advance(LiveSnapshot{now, map[string][]LiveBus{s.RouteID: {liveBus(now, "bus", seconds)}}}, now)
+		later := now.Add(time.Second)
+		s.advance(LiveSnapshot{later, map[string][]LiveBus{s.RouteID: {liveBus(later, "bus", 90)}}}, later)
+		group.Routes = append(group.Routes, s)
+	}
+	group.aggregate(now.Add(time.Second))
+	if *group.Content.Routes[0].Content.ArrivalAt != float64(now.Unix()) ||
+		*group.Content.Routes[1].Content.ArrivalAt != float64(now.Add(91*time.Second).Unix()) ||
+		*group.Content.ArrivalAt != float64(now.Unix()) {
+		t.Fatal("each route must keep its own countdown state", group)
+	}
+	group.Routes[0].advance(LiveSnapshot{}, time.Unix(group.ExpiresAt, 0))
+	if !group.Routes[0].Ended || group.Routes[0].Content.Status != "expired" {
+		t.Fatal("the imminent latch must respect session expiry", group)
+	}
+}
+
+func TestLivePayloadSchedulesZeroRatherThanThirtySeconds(t *testing.T) {
+	now := time.Unix(1000, 0)
+	at := float64(now.Add(30 * time.Second).Unix())
+	s := LiveSession{ExpiresAt: now.Add(time.Hour).Unix(), Content: LiveContent{
+		Routes: []LiveRouteContent{{RouteID: "route", Content: LiveContent{Status: "waiting", ArrivalAt: &at}}},
+	}}
+	var payload struct {
+		APS map[string]any `json:"aps"`
+	}
+	if err := json.Unmarshal(livePayload(s, now), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.APS["stale-date"] != at {
+		t.Fatal("redraw must be scheduled at zero", payload)
 	}
 }
 func TestParseLiveSnapshotRetainsVehicleWithoutChangingPublicJSON(t *testing.T) {
@@ -337,8 +418,13 @@ func TestLiveWaitDoesNotInferArrivalFromMissingOrOlderData(t *testing.T) {
 	initial.advance(LiveSnapshot{now, map[string][]LiveBus{"route": {liveBus(now, "first", 30)}}}, now)
 	missing := initial
 	missing.advance(LiveSnapshot{now.Add(30 * time.Second), map[string][]LiveBus{}}, now.Add(30*time.Second))
-	if missing.Ended || missing.Content.Status != "unavailable" {
-		t.Fatal("missing upstream route isn't arrival", missing)
+	if missing.Ended || missing.Content.Status != "waiting" || missing.Content.ArrivalAt == nil || *missing.Content.ArrivalAt != *initial.Content.ArrivalAt {
+		t.Fatal("missing upstream route must preserve imminent without confirming arrival", missing)
+	}
+	beforeZero := initial
+	beforeZero.advance(LiveSnapshot{now.Add(time.Second), map[string][]LiveBus{}}, now.Add(time.Second))
+	if beforeZero.Ended || beforeZero.Content.Status != "unavailable" {
+		t.Fatal("missing data before zero must retain the reconnecting behavior", beforeZero)
 	}
 	older := initial
 	older.advance(LiveSnapshot{now.Add(-time.Second), map[string][]LiveBus{"route": {liveBus(now, "first", 0)}}}, now)

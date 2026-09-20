@@ -96,7 +96,7 @@ func TestForegroundSessionReadPreservesTrackedVehicleAndCancellation(t *testing.
 	if session.VehicleID != "tracked" || session.Content.Revision == 0 || session.NextPushAt != now.Add(10*time.Second).Unix() {
 		t.Fatal(session)
 	}
-	// A minute boundary redraw must not require another upstream fetch.
+	// A zero boundary redraw must not require another upstream fetch.
 	previousRevision, previousUpdatedAt, previousCalls := session.Content.Revision, session.Content.UpdatedAt, source.calls
 	session.NextPushAt = 0
 	session.NextRefreshAt = now.Add(time.Minute).Unix()

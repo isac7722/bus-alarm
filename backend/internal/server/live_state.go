@@ -109,6 +109,12 @@ func (s *LiveSession) advance(snapshot LiveSnapshot, now time.Time) {
 		s.Ended = true
 		return
 	}
+	// The persisted display ETA becomes a latch at zero. Keep the provider's
+	// actual ETA separately in LastArrivalAt for the existing passage heuristic.
+	var imminentAt *float64
+	if s.Content.Status == "waiting" && s.Content.ArrivalAt != nil && *s.Content.ArrivalAt <= float64(now.Unix()) {
+		imminentAt = s.Content.ArrivalAt
+	}
 	// An old prediction must never turn into an assertion that the bus arrived.
 	if snapshot.UpdatedAt.IsZero() || now.Sub(snapshot.UpdatedAt) > 90*time.Second || snapshot.UpdatedAt.After(now.Add(30*time.Second)) {
 		// Transport failure or an old source snapshot must not erase the last ETA.
@@ -146,20 +152,25 @@ func (s *LiveSession) advance(snapshot LiveSnapshot, now time.Time) {
 		if followingBus && snapshot.UpdatedAt.Unix() > s.LastSeenAt && s.VehicleID != "" && s.LastSeenAt > 0 && now.Unix()-s.LastSeenAt <= 120 && s.LastArrivalAt <= now.Unix()+30 && s.LastArrivalAt >= now.Unix()-120 {
 			s.Content = LiveContent{Status: "passed", UpdatedAt: float64(snapshot.UpdatedAt.Unix())}
 			s.Ended = true
-		} else {
+		} else if imminentAt == nil {
 			s.Content = LiveContent{Status: "unavailable", UpdatedAt: float64(snapshot.UpdatedAt.Unix())}
 		}
 		return
 	}
 	p := selected.Prediction
 	if p.ArrivalAt.Before(snapshot.UpdatedAt.Add(-30 * time.Second)) {
-		s.Content = LiveContent{Status: "unavailable", UpdatedAt: float64(snapshot.UpdatedAt.Unix())}
+		if imminentAt == nil {
+			s.Content = LiveContent{Status: "unavailable", UpdatedAt: float64(snapshot.UpdatedAt.Unix())}
+		}
 		return
 	}
 	s.VehicleID = selected.VehicleID
 	s.LastSeenAt = snapshot.UpdatedAt.Unix()
 	s.LastArrivalAt = p.ArrivalAt.Unix()
 	at := float64(p.ArrivalAt.Unix())
+	if imminentAt != nil {
+		at = *imminentAt
+	}
 	s.Content = LiveContent{Status: "waiting", ArrivalAt: &at, RemainingStops: p.RemainingStops, UpdatedAt: float64(snapshot.UpdatedAt.Unix())}
 	// A zero ETA is still an estimate: keep showing imminent arrival until the
 	// tracked vehicle passes, the user cancels, or the waiting session expires.

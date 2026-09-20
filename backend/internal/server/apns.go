@@ -84,7 +84,7 @@ func livePayload(session LiveSession, now time.Time) []byte {
 	}
 	for _, c := range contents {
 		if c.Status == "waiting" && c.ArrivalAt != nil {
-			imminentAt := int64(*c.ArrivalAt) - 30
+			imminentAt := int64(*c.ArrivalAt)
 			if imminentAt > now.Unix() && (staleAt == 0 || imminentAt < staleAt) {
 				staleAt = imminentAt
 			}
@@ -158,7 +158,7 @@ func (s *LiveSession) schedulePush(now time.Time, err error) {
 	s.NextPushAt = now.Add(10 * time.Second).Unix()
 	if err == nil {
 		s.PushRetry = 0
-		// Keep the normal cadence, but don't skip a minute/30-second display boundary.
+		// The system timer ticks locally; push at zero to redraw the imminent label.
 		contents := []LiveContent{s.Content}
 		for _, route := range s.Content.Routes {
 			contents = append(contents, route.Content)
@@ -167,13 +167,7 @@ func (s *LiveSession) schedulePush(now time.Time, err error) {
 			if content.Status != "waiting" || content.ArrivalAt == nil {
 				continue
 			}
-			remaining := int64(*content.ArrivalAt) - now.Unix()
-			var boundary int64
-			if remaining > 60 {
-				boundary = now.Unix() + (remaining-1)%60 + 1
-			} else if remaining > 30 {
-				boundary = int64(*content.ArrivalAt) - 30
-			}
+			boundary := int64(*content.ArrivalAt)
 			if boundary > now.Unix() && boundary < s.NextPushAt {
 				s.NextPushAt = boundary
 			}

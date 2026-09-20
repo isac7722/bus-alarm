@@ -51,12 +51,12 @@ final class ModelsTests: XCTestCase {
         )
     }
 
-    func testArrivalCountdownRoundsUpAndKeepsImminentAfterZero() {
+    func testArrivalCountdownUsesSecondsAndKeepsImminentAfterZero() {
         let now = Date(timeIntervalSince1970: 1_000)
         let cases: [(TimeInterval, String)] = [
-            (222, "4분"), (180, "3분"), (130, "3분"), (120, "2분"),
-            (70, "2분"), (60.001, "2분"), (60, "1분"), (31, "1분"),
-            (30.001, "1분"), (30, "곧 도착"), (1, "곧 도착"), (0, "곧 도착"), (-300, "곧 도착")
+            (3601, "60:01"), (601, "10:01"), (222, "3:42"), (180, "3:00"),
+            (60.001, "1:01"), (60, "1:00"), (31, "0:31"), (30, "0:30"),
+            (1, "0:01"), (0.001, "0:01"), (0, "곧 도착"), (-300, "곧 도착")
         ]
         for (seconds, expected) in cases {
             XCTAssertEqual(ArrivalCountdownFormatter.text(for: prediction(at: now.addingTimeInterval(seconds)), relativeTo: now),

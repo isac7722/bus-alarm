@@ -24,9 +24,13 @@ final class RouteStopFinderViewModel: ObservableObject {
     var line: [CLLocationCoordinate2D] {
         let coordinates = geometry?.coordinates.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
             .filter { CLLocationCoordinate2DIsValid($0) } ?? []
-        return coordinates.isEmpty ? stops.compactMap { Self.point($0.station) } : coordinates
+        return coordinates.count < 2 ? stops.compactMap { Self.point($0.station) } : coordinates
     }
-    var approximateLine: Bool { geometry?.source != "provider" || (geometry?.coordinates.isEmpty ?? true) }
+    var approximateLine: Bool {
+        geometry?.source != "provider" || (geometry?.coordinates.filter {
+            CLLocationCoordinate2DIsValid(.init(latitude: $0.latitude, longitude: $0.longitude))
+        }.count ?? 0) < 2
+    }
     func loadGeometry() async {
         guard geometry == nil, let api else { return }
         let result = try? await api.routeGeometry(ref: route.id)
@@ -47,13 +51,20 @@ final class RouteStopFinderViewModel: ObservableObject {
             seen.insert($0.stationRef).inserted ? $0.station : nil
         }
     }
-    // A straight-line 1 km radius is for ranking candidates, not for estimating a walking route.
+    var nearestStationID: String? { scope == .nearby ? nearbyStops.first?.stationRef : nil }
+
+    func distance(to station: MapStation) -> Double? {
+        guard let coordinate, let point = Self.point(station) else { return nil }
+        return CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            .distance(from: CLLocation(latitude: point.latitude, longitude: point.longitude))
+    }
+    // A straight-line 5 km radius is for ranking candidates, not for estimating a walking route.
     static func nearby(_ stops: [RouteStopOccurrence], coordinate: CLLocationCoordinate2D) -> [RouteStopOccurrence] {
         let origin = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         return stops.compactMap { stop -> (RouteStopOccurrence, Double)? in
             guard let point = point(stop.station) else { return nil }
             let distance = origin.distance(from: CLLocation(latitude: point.latitude, longitude: point.longitude))
-            return distance <= 1_000 ? (stop, distance) : nil
+            return distance <= 5_000 ? (stop, distance) : nil
         }.sorted { a, b in a.1 == b.1 ? a.0.sequence < b.0.sequence : a.1 < b.1 }.map(\.0)
     }
     static func point(_ station: MapStation) -> CLLocationCoordinate2D? {
@@ -70,7 +81,8 @@ final class RouteStopFinderViewModel: ObservableObject {
             let value = try await api.routeDetail(ref: route.id)
             try Task.checkCancellation()
             detail = value
-            show(.nearby, coordinate: coordinate)
+            // Respect a location/scope request made while the route was loading.
+            show(scope, coordinate: self.coordinate ?? coordinate)
         } catch {
             if !Task.isCancelled { self.error = error.localizedDescription }
         }
@@ -78,13 +90,14 @@ final class RouteStopFinderViewModel: ObservableObject {
     func show(_ requested: Scope, coordinate: CLLocationCoordinate2D?) {
         self.coordinate = coordinate
         focusedStationID = nil
-        if requested == .nearby, coordinate != nil, !nearbyStops.isEmpty {
-            scope = .nearby; notice = nil
+        selected = nil
+        if requested == .nearby, coordinate != nil {
+            scope = .nearby
+            notice = nearbyStops.isEmpty ? "주변 5km에 이 버스의 정류장이 없어요." : nil
         } else {
             scope = .all
             notice = requested == .nearby
-                ? (coordinate == nil ? "전체 정류장을 보고 있어요. 내 위치를 사용하면 가까운 정류장을 찾을 수 있어요."
-                   : "주변 1km에 이 버스의 정류장이 없어 전체 정류장을 보여드려요.") : nil
+                ? "내 위치를 사용하면 가까운 정류장을 찾을 수 있어요." : nil
         }
         fitMap()
     }
@@ -101,11 +114,17 @@ final class RouteStopFinderViewModel: ObservableObject {
     }
     private func fitMap() {
         var points = mapStations.compactMap(Self.point)
-        if scope == .nearby, let coordinate { points.append(coordinate) }
+        if scope == .nearby, let coordinate {
+            points = nearbyStops.first.flatMap { Self.point($0.station) }.map { [$0] } ?? []
+            points.append(coordinate)
+        }
+        if scope == .all { points.append(contentsOf: line) }
         guard let minLat = points.map(\.latitude).min(), let maxLat = points.map(\.latitude).max(),
               let minLon = points.map(\.longitude).min(), let maxLon = points.map(\.longitude).max() else { return }
+        let minimumSpan = scope == .nearby ? 0.0015 : 0.006
         camera = TransitMapCamera(region: MKCoordinateRegion(
             center: .init(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
-            span: .init(latitudeDelta: max(0.006, (maxLat - minLat) * 1.25), longitudeDelta: max(0.006, (maxLon - minLon) * 1.25))))
+            span: .init(latitudeDelta: max(minimumSpan, (maxLat - minLat) * 1.25), longitudeDelta: max(minimumSpan, (maxLon - minLon) * 1.25))),
+            fitInsets: .init(top: 64, left: 28, bottom: 64, right: 80))
     }
 }

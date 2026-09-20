@@ -80,7 +80,7 @@ final class RouteMapTests: XCTestCase {
         let config = WidgetConfigurationData(validated: ValidatedSelection(station: testMapStation, selections: [boarding(4)]))
         let model = CommuteArrivalsModel(api: try api())
         await model.refresh(config)
-        XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1030)), "2분")
+        XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1030)), "1:30")
         XCTAssertNotNil(model.upcoming("gg:227000040", at: Date(timeIntervalSince1970: 1091)))
         XCTAssertEqual(model.label("gg:227000040", at: Date(timeIntervalSince1970: 1121)), "곧 도착")
         await model.refresh(config.selecting([]))
@@ -234,12 +234,64 @@ final class RouteMapTests: XCTestCase {
         XCTAssertEqual(model.selected?.directionId, "inbound")
         model.show(.nearby, coordinate: CLLocationCoordinate2D(latitude: 37.535, longitude: 127.094))
         XCTAssertEqual(model.scope, .nearby)
-        XCTAssertEqual(model.selected?.sequence, 4)
+        XCTAssertNil(model.selected, "Recentering must return to nearby stop choices")
         model.show(.all, coordinate: nil)
         XCTAssertEqual(model.visibleStops.count, 2)
         model.show(.nearby, coordinate: CLLocationCoordinate2D(latitude: 35, longitude: 128))
-        XCTAssertEqual(model.scope, .all)
-        XCTAssertTrue(model.notice?.contains("1km") == true)
+        XCTAssertEqual(model.scope, .nearby)
+        XCTAssertTrue(model.visibleStops.isEmpty)
+        XCTAssertEqual(model.camera.region.center.latitude, 35, accuracy: 0.0001)
+        XCTAssertEqual(model.camera.region.center.longitude, 128, accuracy: 0.0001)
+        XCTAssertTrue(model.notice?.contains("5km") == true)
+    }
+
+    @MainActor
+    func testNearbyCameraIncludesUserAndStopAndRepeatedRequestsRecenter() async throws {
+        let model = RouteStopFinderViewModel(route: testCatalogRoute, api: try api())
+        await model.load(coordinate: nil)
+        let origin = CLLocationCoordinate2D(latitude: 37.537, longitude: 127.094)
+        model.show(.nearby, coordinate: origin)
+        XCTAssertEqual(model.nearestStationID, testMapStation.id)
+        XCTAssertEqual(try XCTUnwrap(model.distance(to: testMapStation)), 222, accuracy: 3)
+        let region = model.camera.region
+        for latitude in [origin.latitude, try XCTUnwrap(testMapStation.latitude)] {
+            XCTAssertLessThan(abs(latitude - region.center.latitude), region.span.latitudeDelta / 2)
+        }
+        let previousCamera = model.camera.id
+        model.camera.region.center = .init(latitude: 35, longitude: 128)
+        model.show(.nearby, coordinate: origin)
+        XCTAssertNotEqual(model.camera.id, previousCamera)
+        XCTAssertEqual(model.camera.region.center.latitude, region.center.latitude, accuracy: 0.0001)
+        XCTAssertNil(model.selected, "Proximity must not choose a boarding direction")
+        model.show(.all, coordinate: origin)
+        XCTAssertEqual(model.visibleStops.map(\.sequence), [1, 4])
+        XCTAssertNil(model.nearestStationID)
+    }
+
+    @MainActor
+    func testProviderGeometryRemainsVisibleInNearbyScopeAndWholeRouteFitsBends() async throws {
+        let model = RouteStopFinderViewModel(route: testCatalogRoute, api: try api("geometry.test"))
+        await model.load(coordinate: nil)
+        await model.loadGeometry()
+        XCTAssertFalse(model.approximateLine)
+        XCTAssertEqual(model.line.count, 3)
+        model.show(.nearby, coordinate: .init(latitude: 37.535, longitude: 127.094))
+        XCTAssertEqual(model.line.count, 3, "Nearby filtering must not truncate the operating route")
+        model.show(.all, coordinate: nil)
+        let region = model.camera.region
+        for point in model.line {
+            XCTAssertLessThan(abs(point.latitude - region.center.latitude), region.span.latitudeDelta / 2)
+            XCTAssertLessThan(abs(point.longitude - region.center.longitude), region.span.longitudeDelta / 2)
+        }
+    }
+
+    @MainActor
+    func testIncompleteGeometryUsesDashedStopConnection() async throws {
+        let model = RouteStopFinderViewModel(route: testCatalogRoute, api: try api("incomplete-geometry.test"))
+        await model.load(coordinate: nil)
+        await model.loadGeometry()
+        XCTAssertTrue(model.approximateLine)
+        XCTAssertEqual(model.line.count, model.stops.count)
     }
 
     @MainActor
@@ -253,10 +305,13 @@ final class RouteMapTests: XCTestCase {
                 direction: original.direction, station: station, nextStop: "", selectable: true, reason: nil)
         }
         let near = at("near", latitude: 37.536, longitude: 127.094)
+        // Roughly 4.9 km and 5.1 km north: cover both sides of the new radius.
+        let withinFive = at("within-five", latitude: 37.579, longitude: 127.094)
+        let beyondFive = at("beyond-five", latitude: 37.581, longitude: 127.094)
         let far = at("far", latitude: 36, longitude: 128)
         let missing = at("missing", latitude: nil, longitude: nil)
-        let result = RouteStopFinderViewModel.nearby([far, near, missing, original], coordinate: origin)
-        XCTAssertEqual(result.map(\.id), [original.id, near.id])
+        let result = RouteStopFinderViewModel.nearby([beyondFive, far, withinFive, near, missing, original], coordinate: origin)
+        XCTAssertEqual(result.map(\.id), [original.id, near.id, withinFive.id])
         XCTAssertNil(RouteStopFinderViewModel.point(missing.station))
     }
 
@@ -375,7 +430,13 @@ private final class RouteTestProtocol: URLProtocol {
         case "/api/v2/routes/gg:227000040":
             data = try! JSONEncoder.busWidget.encode(CatalogDetail(route: testCatalogRoute, revision: "revision-a", directions: [RouteDirection(id: "outbound", name: "하남 방면"), RouteDirection(id: "inbound", name: "강변역 방면")], stops: [occurrence(), occurrence(4)]))
         case "/api/v2/routes/gg:227000040/geometry":
-            data = Data(#"{"coordinates":[],"source":"stops"}"#.utf8)
+            if request.url?.host == "geometry.test" {
+                data = Data(#"{"coordinates":[{"latitude":37.535,"longitude":127.094},{"latitude":37.55,"longitude":127.11},{"latitude":37.538,"longitude":127.09}],"source":"provider"}"#.utf8)
+            } else if request.url?.host == "incomplete-geometry.test" {
+                data = Data(#"{"coordinates":[{"latitude":37.535,"longitude":127.094}],"source":"provider"}"#.utf8)
+            } else {
+                data = Data(#"{"coordinates":[],"source":"stops"}"#.utf8)
+            }
         case "/api/v2/stations/gg:104000069/boarding-options":
             data = try! JSONEncoder.busWidget.encode(BoardingOptions(station: testMapStation, options: [occurrence(), occurrence(route: "gg:123"), occurrence(4, route: "gg:123")], complete: true, warnings: []))
         case "/api/v2/selections/validate":

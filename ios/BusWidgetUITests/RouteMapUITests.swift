@@ -92,10 +92,10 @@ final class RouteMapUITests: XCTestCase {
         let app = launch(fixturePath: "/refresh")
         openStation(app)
         let option = app.buttons["boarding-option.\(ids[0]):104000069:1"]
-        expectation(for: NSPredicate { _, _ in option.label.contains("3분") }, evaluatedWith: nil)
+        expectation(for: NSPredicate { _, _ in option.label.range(of: "[23]:[0-5][0-9]", options: .regularExpression) != nil }, evaluatedWith: nil)
         waitForExpectations(timeout: 8)
         let originalY = option.frame.minY
-        expectation(for: NSPredicate { _, _ in option.label.contains("1분") }, evaluatedWith: nil)
+        expectation(for: NSPredicate { _, _ in option.label.range(of: "0:[0-5][0-9]", options: .regularExpression) != nil }, evaluatedWith: nil)
         waitForExpectations(timeout: 18)
         XCTAssertEqual(option.frame.minY, originalY, accuracy: 2)
         option.tap()
@@ -109,10 +109,10 @@ final class RouteMapUITests: XCTestCase {
         openFavorite(app)
         let route = app.staticTexts["waiting-route.gg:227000040"]
         XCTAssertTrue(route.waitForExistence(timeout: 5))
-        expectation(for: NSPredicate { _, _ in route.label.contains("분") }, evaluatedWith: nil)
+        expectation(for: NSPredicate { _, _ in route.label.range(of: "[0-9]+:[0-5][0-9]", options: .regularExpression) != nil }, evaluatedWith: nil)
         waitForExpectations(timeout: 8)
         XCTAssertFalse(route.label.contains("초 남음"))
-        XCTAssertFalse(route.label.contains(":"))
+        XCTAssertTrue(route.label.contains(":"))
         attach("favorite-detail-countdown")
         let back = app.buttons["favorite-detail-back"]
         XCTAssertTrue(back.isHittable)
@@ -139,18 +139,17 @@ final class RouteMapUITests: XCTestCase {
         XCTAssertTrue(app.buttons["selection-wait"].isEnabled)
     }
 
-    func testFavoriteSwipeDeleteCanBeUndoneAndPersists() {
+    func testFavoriteEditDeleteCanBeUndoneAndPersists() {
         let app = launch()
         openStation(app)
         select(ids[0], in: app)
         saveFavorite(app)
         let card = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite.")).firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 5))
-        card.swipeLeft()
-        XCTAssertTrue(card.exists, "A full swipe must only expose the delete action")
+        app.buttons["favorite-edit"].tap()
         let delete = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite-delete.")).firstMatch
         XCTAssertTrue(delete.waitForExistence(timeout: 3))
-        attach("favorite-swipe-delete")
+        attach("favorite-edit-delete")
         delete.tap()
         let undo = app.buttons["favorite-undo-delete"]
         XCTAssertTrue(undo.waitForExistence(timeout: 3))
@@ -159,13 +158,66 @@ final class RouteMapUITests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 3))
         app.terminate(); app.launch()
         XCTAssertTrue(card.waitForExistence(timeout: 5))
-        card.swipeLeft()
+        app.buttons["favorite-edit"].tap()
         XCTAssertTrue(delete.waitForExistence(timeout: 3))
         delete.tap()
         XCTAssertTrue(app.buttons["favorite-undo-delete"].waitForExistence(timeout: 3))
         app.terminate(); app.launch()
         app.tabBars.buttons["즐겨찾기"].tap()
         XCTAssertTrue(app.staticTexts["저장한 정류장이 없습니다"].waitForExistence(timeout: 5))
+    }
+
+    private func saveTwoFavorites(_ app: XCUIApplication) {
+        openStation(app)
+        select(ids[0], in: app)
+        saveFavorite(app)
+        app.buttons["favorite-add-station"].tap()
+        openStation(app)
+        for id in ids { select(id, in: app) }
+        saveFavorite(app)
+    }
+
+    func testFavoriteGridHasTwoColumnsAndSeparateWaitButtons() {
+        let app = launch()
+        saveTwoFavorites(app)
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite."))
+        XCTAssertEqual(cards.count, 2)
+        let first = cards.element(boundBy: 0), second = cards.element(boundBy: 1)
+        XCTAssertEqual(first.frame.minY, second.frame.minY, accuracy: 2)
+        XCTAssertGreaterThanOrEqual(second.frame.minX - first.frame.maxX, 12)
+        XCTAssertLessThan(first.frame.width, app.frame.width / 2)
+        XCTAssertGreaterThanOrEqual(first.frame.minX, 16)
+        XCTAssertLessThanOrEqual(second.frame.maxX, app.frame.maxX - 16)
+        let starts = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite-start."))
+        XCTAssertEqual(starts.count, 2)
+        for start in starts.allElementsBoundByIndex { XCTAssertGreaterThanOrEqual(start.frame.height, 48) }
+        for name in ["9304", "1113-1", "13", "32"] { XCTAssertTrue(second.label.contains(name)) }
+        attach("favorite-two-column-grid")
+        first.tap()
+        XCTAssertTrue(app.buttons["waiting-start"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["지금 기다리는 버스"].exists)
+    }
+
+    func testFavoriteGridUsesOneColumnAtLargestText() {
+        let app = launch()
+        saveTwoFavorites(app)
+        app.terminate()
+        app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launchEnvironment["BUS_WIDGET_TEST_COLOR_SCHEME"] = "dark"
+        app.launch()
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite."))
+        let first = cards.element(boundBy: 0), second = cards.element(boundBy: 1)
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        reveal(first, in: app, up: false)
+        XCTAssertGreaterThan(first.frame.width, app.frame.width * 0.8)
+        attach("favorite-one-column-largest-dark")
+        reveal(second, in: app)
+        XCTAssertGreaterThan(second.frame.width, app.frame.width * 0.8)
+        XCTAssertEqual(first.frame.minX, second.frame.minX, accuracy: 2)
+        let start = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "favorite-start.")).element(boundBy: 1)
+        reveal(start, in: app)
+        XCTAssertGreaterThanOrEqual(start.frame.height, 48)
+        XCTAssertLessThanOrEqual(start.frame.maxX, app.frame.maxX - 16)
     }
 
     func testStationPanelDragSearchAndMapScale() {
@@ -402,10 +454,33 @@ final class RouteMapUITests: XCTestCase {
         let nearby = app.segmentedControls.buttons["가까운 정류장"]
         expectation(for: NSPredicate { _, _ in nearby.isSelected }, evaluatedWith: nil)
         waitForExpectations(timeout: 12)
+        XCTAssertEqual(app.buttons["route-panel-handle"].value as? String, "접힘")
+        let user = app.images["map-user-location"]
+        XCTAssertTrue(user.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["route-station-pin.gg:104000069"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["route-station-pin.gg:104000069"].isSelected, "Nearest is a suggestion, not a boarding choice")
+        let distance = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "직선 ")).firstMatch
+        XCTAssertTrue(distance.exists)
+        XCTAssertLessThanOrEqual(distance.frame.maxY, app.scrollViews["route-stops"].frame.maxY + 1)
         XCTAssertFalse(app.buttons["route-selection-wait"].exists)
         XCTAssertFalse(app.buttons["route-stop.gg:227000040:remote:10"].exists)
         attach("bus-search-nearby")
-        app.segmentedControls.buttons["전체 정류장"].tap()
+        // A stop about 2.4 km away now remains a nearby candidate.
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 37.5885, longitude: 126.978))
+        app.buttons["route-my-location"].tap()
+        expectation(for: NSPredicate { _, _ in distance.label.contains("km") }, evaluatedWith: nil)
+        waitForExpectations(timeout: 12)
+        XCTAssertTrue(app.buttons["route-station-pin.gg:104000069"].exists)
+        attach("bus-search-nearby-five-kilometers")
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 35, longitude: 128))
+        app.buttons["route-my-location"].tap()
+        XCTAssertTrue(app.staticTexts["주변 5km에 이 버스의 정류장이 없어요."].waitForExistence(timeout: 12))
+        XCTAssertTrue(nearby.isSelected)
+        XCTAssertTrue(user.exists)
+        XCTAssertFalse(app.buttons["route-station-pin.gg:104000069"].exists)
+        attach("bus-route-no-nearby-stops")
+        app.buttons["route-whole-route"].tap()
+        XCTAssertTrue(app.segmentedControls.buttons["전체 정류장"].isSelected)
         let remote = app.buttons["route-stop.gg:227000040:remote:10"]
         reveal(remote, in: app)
         XCTAssertTrue(remote.isHittable)
@@ -433,6 +508,32 @@ final class RouteMapUITests: XCTestCase {
         let feedback = app.staticTexts["실시간 현황 서비스를 준비 중입니다. 잠시 후 다시 시도해 주세요."]
         reveal(feedback, in: app)
         XCTAssertTrue(feedback.exists)
+    }
+
+    func testRouteMapRemainsAvailableAtLargestTextAndInLandscape() {
+        let app = launch(large: true)
+        searchBus(app)
+        let toggle = app.buttons["route-map-list-toggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.tap()
+        XCTAssertTrue(app.buttons["route-whole-route"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["route-my-location"].isHittable)
+        XCTAssertFalse(app.scrollViews["route-stops"].exists)
+        attach("route-map-largest-dark")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        expectation(for: NSPredicate { _, _ in app.frame.width > app.frame.height }, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+        XCTAssertTrue(app.buttons["route-whole-route"].isHittable)
+        XCTAssertTrue(toggle.isHittable)
+        XCTAssertFalse(app.buttons["route-my-location"].frame.intersects(app.buttons["map-zoom-out"].frame))
+        attach("route-map-largest-landscape")
+        toggle.tap()
+        XCTAssertTrue(app.scrollViews["route-stops"].waitForExistence(timeout: 5))
+        let opposite = app.buttons["route-stop.gg:227000040:104000069:4"]
+        reveal(opposite, in: app)
+        opposite.tap()
+        XCTAssertTrue(app.staticTexts["강변역 방면"].waitForExistence(timeout: 5))
     }
 
     func testMyLocationRecentersAndShowsCompactRefresh() {

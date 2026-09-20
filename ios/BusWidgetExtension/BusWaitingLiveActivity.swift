@@ -90,9 +90,16 @@ private struct WaitingCountdown: View {
 
     var body: some View {
         if state.status == "waiting", let arrival = state.arrivalDate {
-            // ActivityKit redraws on app/APNs updates and the imminent stale-date.
-            // TimelineView/custom format styles do not provide a background clock here.
-            Text(ArrivalCountdownFormatter.text(arrivalAt: arrival, relativeTo: .now))
+            let now = Date.now
+            // The system timer keeps ticking while the app is suspended and clamps at zero.
+            // The ETA stale-date and server push redraw the label as imminent.
+            Group {
+                if arrival > now {
+                    Text(timerInterval: now...arrival, countsDown: true, showsHours: false)
+                } else {
+                    Text("곧 도착")
+                }
+            }
                 .monospacedDigit().multilineTextAlignment(.trailing)
                 .lineLimit(1).minimumScaleFactor(0.6)
         } else {

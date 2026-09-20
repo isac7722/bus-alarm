@@ -7,6 +7,7 @@ struct TransitMapCamera {
     let id = UUID()
     var region: MKCoordinateRegion
     var snapshot: NMFCameraPosition? = nil
+    var fitInsets: UIEdgeInsets = .zero
 
     static func locationRegion(center: CLLocationCoordinate2D) -> MKCoordinateRegion {
         MKCoordinateRegion(center: center, latitudinalMeters: 300, longitudinalMeters: 300)
@@ -20,6 +21,7 @@ struct TransitMapPin {
     var title: String = ""
     var enabled = true
     var selected = false
+    var emphasized = false
     let action: () -> Void
 }
 
@@ -107,6 +109,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
     private var polyline: NMFPolylineOverlay?
     private var lineSignature: [Double] = []
     private let directionArrow = UIImageView(image: UIImage(systemName: "arrowtriangle.up.fill"))
+    private var routeCoordinates: [CLLocationCoordinate2D] = []
     private var directionSegment: [CLLocationCoordinate2D] = []
     private var userCoordinate: CLLocationCoordinate2D?
     private let userLocationView = TransitUserLocationView()
@@ -151,7 +154,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
             zoomControls.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             zoomControls.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
-        directionArrow.tintColor = TransitColors.action
+        directionArrow.tintColor = TransitColors.action.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
         directionArrow.bounds.size = CGSize(width: 20, height: 20)
         directionArrow.isAccessibilityElement = false
         mapView.addSubview(directionArrow)
@@ -190,7 +193,11 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
             if let snapshot = camera.snapshot {
                 mapView.moveCamera(NMFCameraUpdate(position: snapshot))
             } else {
-                mapView.moveCamera(NMFCameraUpdate(fit: NMGLatLngBounds(southWest: sw, northEast: ne)))
+                let insets = UIEdgeInsets(top: min(camera.fitInsets.top, bounds.height * 0.2),
+                                          left: min(camera.fitInsets.left, bounds.width * 0.2),
+                                          bottom: min(camera.fitInsets.bottom, bounds.height * 0.2),
+                                          right: min(camera.fitInsets.right, bounds.width * 0.25))
+                mapView.moveCamera(NMFCameraUpdate(fit: NMGLatLngBounds(southWest: sw, northEast: ne), paddingInsets: insets))
             }
         }
         if bounds.size != lastLayoutSize {
@@ -202,7 +209,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
     }
     func setPins(_ values: [TransitMapPin]) {
         pins = values
-        let signature = values.map { "\($0.id):\($0.coordinate.latitude):\($0.coordinate.longitude):\($0.label):\($0.title):\($0.enabled):\($0.selected)" }
+        let signature = values.map { "\($0.id):\($0.coordinate.latitude):\($0.coordinate.longitude):\($0.label):\($0.title):\($0.enabled):\($0.selected):\($0.emphasized)" }
         guard signature != pinSignature else { return }
         pinSignature = signature
         if !moving { rebuildGroups() }
@@ -241,7 +248,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
             guard visible.contains(point) else { return nil }
             return TransitMarkerPoint(id: pin.id, point: point)
         }
-        let selectedIDs = Set(pins.filter(\.selected).map(\.id))
+        let selectedIDs = Set(pins.filter { $0.selected || $0.emphasized }.map(\.id))
         groups = TransitMarkerLayout.groups(points, scaleMeters: scaleMeters, protectedIDs: selectedIDs)
         let ids = Set(groups.map(\.id))
         for id in Array(buttons.keys) where !ids.contains(id) {
@@ -252,6 +259,7 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         for group in groups {
             let members = group.members.compactMap { byID[$0.id] }
             let selected = members.contains { $0.selected }
+            let emphasized = members.contains { $0.emphasized }
             let button: TransitMarkerButton
             if let existing = buttons[group.id] { button = existing }
             else {
@@ -276,9 +284,10 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
             button.accessibilityIdentifier = group.id
             button.accessibilityLabel = members.count == 1 ? members[0].label : "조회된 정류장 \(members.count)개"
             button.accessibilityHint = members.count == 1 ? "정류장의 버스를 확인합니다" : "확대하여 정류장을 선택합니다"
+            button.accessibilityValue = emphasized ? "가장 가까운 정류장" : nil
             button.isEnabled = members.count > 1 || (members.first?.enabled ?? false)
             button.alpha = button.isEnabled ? 1 : 0.45
-            button.present(detail: detail, count: members.count, selected: selected)
+            button.present(detail: detail, count: members.count, selected: selected, emphasized: emphasized)
             captions[group.id]?.text = members.count == 1 ? members[0].title : nil
             if selected { bringSubviewToFront(button) }
         }
@@ -300,6 +309,8 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         let point = project(coordinate)
         userLocationView.center = mapView.convert(point, to: self)
         userLocationView.isHidden = !mapView.bounds.contains(point)
+        // A very close stop must not obscure the user's position.
+        bringSubviewToFront(userLocationView)
     }
     private func activateGroup(_ id: String) {
         guard let group = groups.first(where: { $0.id == id }) else { return }
@@ -325,11 +336,26 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
     }
     private func positionPins() {
         positionUserLocation()
+        // Choose a visible segment after the camera settles; project only that pair during gestures.
+        if !moving {
+            let points = routeCoordinates.map(project)
+            var closest = CGFloat.infinity
+            directionSegment = []
+            for index in points.indices.dropLast() {
+                let from = points[index], to = points[index + 1]
+                let midpoint = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2)
+                let distance = hypot(midpoint.x - bounds.midX, midpoint.y - bounds.midY)
+                if markerBounds.contains(midpoint), hypot(to.x - from.x, to.y - from.y) >= 16, distance < closest {
+                    closest = distance
+                    directionSegment = [routeCoordinates[index], routeCoordinates[index + 1]]
+                }
+            }
+        }
         directionArrow.isHidden = directionSegment.count != 2
         if directionSegment.count == 2 {
-            let points = directionSegment.map { project($0) }
-            directionArrow.center = CGPoint(x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2)
-            directionArrow.transform = CGAffineTransform(rotationAngle: atan2(points[1].x - points[0].x, points[0].y - points[1].y))
+            let from = project(directionSegment[0]), to = project(directionSegment[1])
+            directionArrow.center = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2)
+            directionArrow.transform = CGAffineTransform(rotationAngle: atan2(to.x - from.x, from.y - to.y))
         }
         let byID = Dictionary(uniqueKeysWithValues: pins.map { ($0.id, $0) })
         let visible = markerBounds
@@ -345,15 +371,16 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         }
         // Give the selected stop first choice of label space, including at overview scales.
         var occupied = buttons.values.filter { !$0.isHidden }.map { $0.frame.insetBy(dx: -4, dy: -4) }
+        if !userLocationView.isHidden { occupied.append(userLocationView.frame) }
         let labelGroups = groups.sorted {
-            let a = $0.members.contains { byID[$0.id]?.selected == true }
-            let b = $1.members.contains { byID[$0.id]?.selected == true }
+            let a = $0.members.contains { byID[$0.id]?.selected == true || byID[$0.id]?.emphasized == true }
+            let b = $1.members.contains { byID[$0.id]?.selected == true || byID[$0.id]?.emphasized == true }
             return a == b ? $0.id < $1.id : a
         }
         for group in labelGroups {
             guard let caption = captions[group.id], let button = buttons[group.id] else { continue }
             caption.isHidden = true
-            let selected = group.members.contains { byID[$0.id]?.selected == true }
+            let selected = group.members.contains { byID[$0.id]?.selected == true || byID[$0.id]?.emphasized == true }
             guard (detail == .street || selected), !moving, !button.isHidden, group.members.count == 1,
                   let text = caption.text, !text.isEmpty else { continue }
             let width = min(150, caption.intrinsicContentSize.width + 12)
@@ -374,13 +401,14 @@ private final class TransitNaverMapView: NMFNaverMapView, NMFMapViewCameraDelega
         let signature = [dashed ? 1.0 : 0.0] + coordinates.flatMap { [$0.latitude, $0.longitude] }
         guard signature != lineSignature else { return }
         lineSignature = signature
-        directionSegment = dashed ? Array(coordinates.prefix(2)) : []
+        routeCoordinates = coordinates
         polyline?.mapView = nil
         polyline = nil
         if coordinates.count > 1 {
             polyline = NMFPolylineOverlay(coordinates.map { NMGLatLng(lat: $0.latitude, lng: $0.longitude) })
-            polyline?.color = TransitColors.action
-            polyline?.width = 3
+            // The SDK uses light map tiles in both app appearances.
+            polyline?.color = TransitColors.action.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+            polyline?.width = 4
             polyline?.pattern = dashed ? [6, 5] : []
             polyline?.mapView = mapView
         }

@@ -1,12 +1,13 @@
 import Foundation
 
 enum ArrivalCountdownFormatter {
-    static let imminentInterval: TimeInterval = 30
+    static let imminentInterval: TimeInterval = 0
 
     static func text(arrivalAt: Date, relativeTo date: Date) -> String {
         let remaining = arrivalAt.timeIntervalSince(date)
         guard remaining > imminentInterval else { return "곧 도착" }
-        return "\(Int(ceil(remaining / 60)))분"
+        let seconds = Int(ceil(remaining))
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
     static func text(for prediction: ArrivalPrediction?, relativeTo date: Date) -> String {

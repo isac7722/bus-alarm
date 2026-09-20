@@ -201,8 +201,8 @@ func TestLiveGroupDoesNotExtendSourceFreshness(t *testing.T) {
 		APS map[string]any `json:"aps"`
 	}
 	json.Unmarshal(livePayload(s, now), &payload)
-	if payload.APS["stale-date"] != at-30 {
-		t.Fatal("next presentation boundary must be 30 seconds before ETA", payload)
+	if payload.APS["stale-date"] != at {
+		t.Fatal("next presentation boundary must be at zero", payload)
 	}
 	// Source age is preserved even while an old ETA remains visible.
 	s.Routes[0].Content.UpdatedAt = old - 60

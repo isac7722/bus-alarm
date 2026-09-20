@@ -8,55 +8,55 @@ private struct FavoriteDestination: Hashable {
 struct FavoritesView: View {
     @EnvironmentObject private var favorites: FavoritesStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showPrivacy = false
+    @State private var editing = false
     @State private var path: [FavoriteDestination] = []
     let findStation: () -> Void
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollViewReader { proxy in
-                List {
-                    if !favorites.items.isEmpty {
-                        Text("저장한 정류장 \(favorites.items.count)개")
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.secondaryText)
-                            .listRowBackground(Color.clear).listRowSeparator(.hidden)
-                    }
-                    if let error = favorites.error {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(error)
-                            Button("다시 시도") {
-                                favorites.reload()
-                                Task { await favorites.hydrateLegacyNames() }
-                            }.frame(minHeight: 44)
-                        }.listRowBackground(Color.clear).listRowSeparator(.hidden)
-                    }
-                    if favorites.items.isEmpty && favorites.error == nil {
-                        TransitEmptyState(title: "저장한 정류장이 없습니다", symbol: "bookmark",
-                            message: "자주 타는 정류장과 버스를 저장하면\n다음에는 바로 기다릴 수 있어요.")
-                            .listRowBackground(Color.clear).listRowSeparator(.hidden)
-                    }
-                    ForEach(favorites.items) { favorite in
-                        FavoriteCard(favorite: favorite,
-                            highlighted: favorites.saveNotice?.favoriteID == favorite.id,
-                            refreshEnabled: path.isEmpty,
-                            showDetail: { path.append(FavoriteDestination(favorite: favorite)) },
-                            start: { path.append(FavoriteDestination(favorite: favorite, autoStart: true)) })
-                            .id(favorite.id)
-                            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
-                            .listRowBackground(Color.clear).listRowSeparator(.hidden)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button { favorites.delete(favorite) } label: { Label("삭제", systemImage: "trash") }
-                                    .tint(.red).accessibilityIdentifier("favorite-delete.\(favorite.id)")
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        if !favorites.items.isEmpty {
+                            Text("저장한 정류장 \(favorites.items.count)개")
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.secondaryText)
+                        }
+                        if let error = favorites.error {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(error)
+                                Button("다시 시도") {
+                                    favorites.reload()
+                                    Task { await favorites.hydrateLegacyNames() }
+                                }.frame(minHeight: 44)
                             }
-                    }
-                    Button(action: findStation) {
-                        Label("자주 타는 정류장 추가", systemImage: "plus").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(TransitButtonStyle(prominent: favorites.items.isEmpty))
-                    .accessibilityIdentifier("favorite-add-station")
-                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
+                        }
+                        if favorites.items.isEmpty && favorites.error == nil {
+                            TransitEmptyState(title: "저장한 정류장이 없습니다", symbol: "bookmark",
+                                message: "자주 타는 정류장과 버스를 저장하면\n다음에는 바로 기다릴 수 있어요.")
+                        }
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top),
+                                                 count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 12) {
+                            ForEach(favorites.items) { favorite in
+                                FavoriteCard(favorite: favorite,
+                                    highlighted: favorites.saveNotice?.favoriteID == favorite.id,
+                                    refreshEnabled: path.isEmpty,
+                                    editing: editing,
+                                    showDetail: { path.append(FavoriteDestination(favorite: favorite)) },
+                                    start: { path.append(FavoriteDestination(favorite: favorite, autoStart: true)) },
+                                    delete: { favorites.delete(favorite) })
+                                    .id(favorite.id)
+                            }
+                        }.accessibilityIdentifier("favorite-grid")
+                        Button(action: findStation) {
+                            Label("자주 타는 정류장 추가", systemImage: "plus").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(TransitButtonStyle(prominent: favorites.items.isEmpty))
+                        .accessibilityIdentifier("favorite-add-station")
+                    }.padding(.horizontal, 16).padding(.vertical, 12)
                 }
-                .listStyle(.plain).scrollContentBackground(.hidden)
+                .accessibilityIdentifier("favorite-list")
                 .task(id: favorites.saveNotice?.id) {
                     guard let notice = favorites.saveNotice else { return }
                     await Task.yield()
@@ -91,6 +91,12 @@ struct FavoritesView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    if !favorites.items.isEmpty || editing {
+                        Button(editing ? "완료" : "편집") { editing.toggle() }
+                            .accessibilityIdentifier("favorite-edit")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Menu { Button("개인정보처리방침") { showPrivacy = true } }
                     label: { Label("더보기", systemImage: "ellipsis") }
                 }
@@ -117,36 +123,42 @@ private struct FavoriteCard: View {
     @State private var visible = false
     let highlighted: Bool
     let refreshEnabled: Bool
+    let editing: Bool
     let showDetail: () -> Void
     let start: () -> Void
+    let delete: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button(action: showDetail) {
                 VStack(alignment: .leading, spacing: 6) {
                     if !favorite.nickname.isEmpty {
-                        Text(favorite.nickname).font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                        Text(favorite.nickname).font(.footnote).foregroundStyle(AppTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Text(favorite.configuration.stationName).font(.title3.weight(.semibold))
                         .foregroundStyle(AppTheme.text).fixedSize(horizontal: false, vertical: true)
                     if let number = favorite.displayNumber {
-                        Text("정류장 \(number)").font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                        Text(number).font(.footnote).foregroundStyle(AppTheme.secondaryText)
+                            .accessibilityLabel("정류장 \(number)")
                     }
                     if !favorite.directions.isEmpty {
                         Text(favorite.directions.joined(separator: " · "))
-                            .font(.subheadline).foregroundStyle(AppTheme.secondaryText)
+                            .font(.footnote).foregroundStyle(AppTheme.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     RouteBadgeLayout {
                         ForEach(favorite.displayRoutes) { route in
                             Text(route.routeName).font(.subheadline.weight(.semibold))
-                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 8).padding(.vertical, 4)
                                 .foregroundStyle(AppTheme.text)
                                 .background(AppTheme.background, in: RoundedRectangle(cornerRadius: 8))
                         }
                     }.padding(.top, 4)
-                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).contentShape(Rectangle())
             }.buttonStyle(.plain)
+             .disabled(editing)
              .accessibilityIdentifier("favorite.\(favorite.id)")
              .accessibilityHint("등록된 버스의 도착정보를 확인하고 전체 대기를 시작할 수 있습니다.")
             if favorite.hasMissingRouteNames {
@@ -158,14 +170,24 @@ private struct FavoriteCard: View {
                     Text("저장한 버스 정보를 불러오지 못했어요.").font(.footnote).foregroundStyle(AppTheme.secondaryText)
                 }
             }
-            Button(action: start) { Text("바로 기다리기").frame(maxWidth: .infinity) }
-                .buttonStyle(TransitButtonStyle(prominent: false))
-                .disabled(waiting.isBusy || waiting.activity != nil || favorite.hasMissingRouteNames)
-                .accessibilityLabel("\(favorite.configuration.stationName)에서 바로 기다리기")
-                .accessibilityHint("저장한 \(favorite.configuration.routeIds.count)개 버스 전체로 대기를 시작합니다.")
-                .accessibilityIdentifier("favorite-start.\(favorite.id)")
+            if editing {
+                Button(role: .destructive, action: delete) {
+                    Label("삭제", systemImage: "trash")
+                        .font(.body.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
+                        .background(AppTheme.background, in: RoundedRectangle(cornerRadius: AppTheme.controlRadius))
+                }.buttonStyle(.plain).foregroundStyle(.red)
+                 .accessibilityLabel("\(favorite.configuration.stationName) 즐겨찾기 삭제")
+                 .accessibilityIdentifier("favorite-delete.\(favorite.id)")
+            } else {
+                Button(action: start) { Text("바로 기다리기").fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity) }
+                    .buttonStyle(TransitButtonStyle(prominent: false))
+                    .disabled(waiting.isBusy || waiting.activity != nil || favorite.hasMissingRouteNames)
+                    .accessibilityLabel("\(favorite.configuration.stationName)에서 바로 기다리기")
+                    .accessibilityHint("저장한 \(favorite.configuration.routeIds.count)개 버스 전체로 대기를 시작합니다.")
+                    .accessibilityIdentifier("favorite-start.\(favorite.id)")
+            }
         }
-        .padding(20).frame(maxWidth: .infinity, alignment: .leading).transitCard()
+        .padding(12).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).transitCard()
         .overlay(RoundedRectangle(cornerRadius: AppTheme.cardRadius)
             .strokeBorder(highlighted ? AppTheme.action : Color.clear, lineWidth: 2))
         .onAppear { visible = true }.onDisappear { visible = false }

@@ -10,9 +10,12 @@ struct RouteStopFinderView: View {
     @State private var detent: RoutePanelDetent = .medium
     @State private var dragHeight: CGFloat?
     @State private var dragOrigin: CGFloat?
+    @State private var showingMap = false
     let replacing: SavedStop?
     let intent: StationSelectionIntent
-    private var listOnly: Bool { typeSize.isAccessibilitySize || verticalSize == .compact }
+    private var separateMapAndList: Bool { typeSize.isAccessibilitySize || verticalSize == .compact }
+    private var mapOnly: Bool { separateMapAndList && showingMap && model.selected == nil }
+    private var listOnly: Bool { separateMapAndList && !mapOnly }
 
     init(route: CatalogRoute, location: StationLocationService, replacing: SavedStop? = nil, intent: StationSelectionIntent = .explore) {
         _model = StateObject(wrappedValue: RouteStopFinderViewModel(route: route))
@@ -21,38 +24,49 @@ struct RouteStopFinderView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.selected == nil && !listOnly {
+            if model.selected == nil && !separateMapAndList {
                 controls
             }
             GeometryReader { geometry in
                 let height = max(1, geometry.size.height)
-                let panelHeight = listOnly ? height : dragHeight ?? detent.height(in: height)
+                let panelHeight = mapOnly ? 0 : listOnly ? height : dragHeight ?? detent.height(in: height)
                 VStack(spacing: 0) {
                     if !listOnly {
                         routeMap.frame(height: max(0, height - panelHeight)).clipped()
                             .allowsHitTesting(height - panelHeight >= 44)
                             .accessibilityHidden(height - panelHeight < 44)
                     }
-                    VStack(spacing: 0) {
-                        if !listOnly { panelHandle(height: height) }
-                        if let selected = model.selected {
-                            RouteBoardingPanel(stop: selected, replacing: replacing, intent: intent,
-                                               compactPanel: detent == .collapsed || dragHeight != nil) {
-                                model.selected = nil
-                            }.id(selected.id)
-                        } else {
-                            stopList
+                    if !mapOnly {
+                        VStack(spacing: 0) {
+                            if !listOnly { panelHandle(height: height) }
+                            if let selected = model.selected {
+                                RouteBoardingPanel(stop: selected, replacing: replacing, intent: intent,
+                                                   compactPanel: listOnly || detent == .collapsed || dragHeight != nil) {
+                                    model.selected = nil
+                                }.id(selected.id)
+                            } else {
+                                stopList
+                            }
                         }
+                        .frame(height: panelHeight).background(AppTheme.surface)
+                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16))
+                        .overlay(alignment: .top) { Divider().overlay(AppTheme.separator).padding(.horizontal, 16) }
                     }
-                    .frame(height: panelHeight).background(AppTheme.surface)
-                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16))
-                    .overlay(alignment: .top) { Divider().overlay(AppTheme.separator).padding(.horizontal, 16) }
                 }
             }
         }
         .background(AppTheme.background).foregroundStyle(AppTheme.text).tint(AppTheme.action)
         .navigationTitle("\(model.route.name)번")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if separateMapAndList && model.selected == nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(showingMap ? "목록" : "지도", systemImage: showingMap ? "list.bullet" : "map") {
+                        showingMap.toggle()
+                    }.accessibilityIdentifier("route-map-list-toggle")
+                }
+            }
+        }
         .task {
             if model.detail == nil { await model.load(coordinate: location.nearbyCoordinate) }
         }
@@ -60,12 +74,22 @@ struct RouteStopFinderView: View {
         .onChange(of: model.selected?.id) { _, id in
             if let id {
                 lastSelectedID = id
+                showingMap = false
                 if detent == .collapsed { setDetent(.medium) }
             }
         }
-        .onChange(of: location.isLocating) { _, locating in
-            if !locating { model.show(.nearby, coordinate: location.nearbyCoordinate) }
+        .onChange(of: location.updateID) { _, _ in
+            guard let coordinate = location.nearbyCoordinate else { return }
+            model.show(.nearby, coordinate: coordinate)
+            showingMap = true
+            setDetent(.collapsed)
         }
+    }
+
+    private func showWholeRoute() {
+        model.show(.all, coordinate: location.nearbyCoordinate)
+        showingMap = true
+        setDetent(.collapsed)
     }
 
     private func setDetent(_ value: RoutePanelDetent) {
@@ -79,7 +103,7 @@ struct RouteStopFinderView: View {
             VStack(spacing: 6) {
                 Capsule().fill(AppTheme.separator).frame(width: 36, height: 4).accessibilityHidden(true)
                 HStack {
-                    Text(model.selected == nil ? "정류장 · \(model.visibleStops.count)개" : "선택한 정류장")
+                    Text(model.selected == nil ? "\(model.scope.rawValue) · \(model.visibleStops.count)개" : "선택한 정류장")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     Image(systemName: detent == .expanded ? "chevron.down" : "chevron.up")
@@ -152,8 +176,58 @@ struct RouteStopFinderView: View {
             return TransitMapPin(id: "route-station-pin.\(station.id)", coordinate: point,
                 label: "\(station.name), 정류장 \(station.displayNumber)", title: station.name,
                 selected: model.selected?.stationRef == station.id || model.focusedStationID == station.id,
+                emphasized: model.selected == nil && model.focusedStationID == nil && model.nearestStationID == station.id,
                 action: { model.focus(station) })
         }, line: model.line, dashed: model.approximateLine, userLocation: location.coordinate, onMove: { model.camera.region = $0 }, onCameraChange: { model.camera.snapshot = $0 })
+        .overlay(alignment: separateMapAndList ? .topLeading : .topTrailing) {
+            HStack(spacing: 8) {
+                Button(action: showWholeRoute) { mapControlLabel("전체 경로", symbol: "map") }
+                    .buttonStyle(TransitMapButtonStyle()).accessibilityIdentifier("route-whole-route")
+                    .accessibilityLabel("전체 경로")
+                    .accessibilityShowsLargeContentViewer { Label("전체 경로", systemImage: "map") }
+                if separateMapAndList { mapLocationButton }
+            }.padding(8)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if !separateMapAndList && model.selected != nil {
+                mapLocationButton.padding(.trailing, 8).padding(.bottom, 44)
+            }
+        }
+        .overlay(alignment: .bottomLeading) {
+            if !mapOnly && model.approximateLine && model.line.count > 1 {
+                Text("점선 · 정류장 연결선").font(.caption).foregroundStyle(AppTheme.secondaryText)
+                    .padding(6).background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.leading, 8).padding(.bottom, 40).allowsHitTesting(false)
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if mapOnly && model.approximateLine && model.line.count > 1 {
+                Text("점선 · 정류장 연결선").font(.caption)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(8).background(AppTheme.surface)
+            }
+        }
+    }
+
+    private var mapLocationButton: some View {
+        Button { location.request() } label: {
+            mapControlLabel(location.isLocating ? "위치 확인 중" : "내 위치", symbol: "location")
+        }.buttonStyle(TransitMapButtonStyle()).disabled(location.isLocating)
+         .accessibilityLabel(location.isLocating ? "위치 확인 중" : "내 위치")
+         .accessibilityShowsLargeContentViewer { Label("내 위치", systemImage: "location") }
+         .accessibilityIdentifier("route-my-location")
+    }
+
+    @ViewBuilder
+    private func mapControlLabel(_ title: String, symbol: String) -> some View {
+        if separateMapAndList {
+            Image(systemName: symbol).font(.system(size: 22, weight: .semibold)).frame(width: 28, height: 28)
+        } else {
+            Label(title, systemImage: symbol)
+        }
+    }
+
+    private var routeLineNotice: some View {
+        Text("점선은 정류장 연결선입니다.").font(.footnote).foregroundStyle(AppTheme.secondaryText)
     }
 
     private var stopList: some View {
@@ -161,8 +235,8 @@ struct RouteStopFinderView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if listOnly { controls }
-                    if model.approximateLine && model.line.count > 1 && !listOnly {
-                        Text("점선은 정류장 연결선입니다.").font(.footnote).foregroundStyle(AppTheme.secondaryText).padding(.horizontal, 20)
+                    if listOnly && model.approximateLine && model.line.count > 1 {
+                        routeLineNotice.padding(.horizontal, 20)
                     }
                     if model.loading { ProgressView("정류장을 불러오는 중…").padding(20) }
                     if let error = model.error {
@@ -172,12 +246,20 @@ struct RouteStopFinderView: View {
                         }.padding(20)
                     }
                     if let message = location.message { Text(message).font(.callout).padding(20) }
-                    if let notice = model.notice { Text(notice).font(.callout).foregroundStyle(AppTheme.secondaryText).padding(20) }
+                    if let notice = model.notice {
+                        Text(notice).font(.callout).foregroundStyle(AppTheme.secondaryText)
+                            .padding(.horizontal, 20).padding(.vertical, 8)
+                    }
+                    if model.scope == .nearby && model.nearbyStops.isEmpty && !model.loading {
+                        Button("전체 경로 보기", action: showWholeRoute)
+                            .buttonStyle(TransitButtonStyle(prominent: false)).padding(.horizontal, 20)
+                            .accessibilityIdentifier("route-empty-whole-route")
+                    }
                     if model.focusedStationID != nil {
                         Button("정류장 목록으로 돌아가기", systemImage: "arrow.left") { model.focusedStationID = nil }
                             .frame(minHeight: 44).padding(.horizontal, 20)
                     }
-                    if model.detail != nil && model.visibleStops.isEmpty {
+                    if model.detail != nil && model.visibleStops.isEmpty && model.scope == .all {
                         TransitEmptyState(title: "정류장 정보가 없습니다.", symbol: "bus", message: "다시 조회하거나 다른 버스를 검색해 주세요.")
                     }
                     ForEach(model.visibleStops) { stop in
@@ -186,15 +268,21 @@ struct RouteStopFinderView: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(stop.station.name).font(.headline).foregroundStyle(AppTheme.text)
                                     Text(stop.direction.isEmpty ? "방면 정보 없음" : stop.direction).font(.subheadline)
-                                    if !stop.nextStop.isEmpty { Text("다음: \(stop.nextStop)").font(.subheadline) }
-                                    Text(stop.station.displayNumber.isEmpty ? "정류장 번호 정보 없음" : "정류장 \(stop.station.displayNumber)")
-                                        .font(.footnote).monospacedDigit()
+                                    if model.scope == .nearby, let distance = model.distance(to: stop.station) {
+                                        Text("직선 \(distance < 1_000 ? "\(Int(distance.rounded()))m" : String(format: "%.1fkm", distance / 1_000)) · \(stop.station.displayNumber.isEmpty ? "정류장 번호 정보 없음" : stop.station.displayNumber)")
+                                            .font(.footnote).monospacedDigit()
+                                    } else {
+                                        if !stop.nextStop.isEmpty { Text("다음: \(stop.nextStop)").font(.subheadline) }
+                                        Text(stop.station.displayNumber.isEmpty ? "정류장 번호 정보 없음" : "정류장 \(stop.station.displayNumber)")
+                                            .font(.footnote).monospacedDigit()
+                                    }
                                     if let reason = stop.reason { Text(reason).font(.callout) }
                                 }.fixedSize(horizontal: false, vertical: true)
                                 Spacer(minLength: 0)
                                 Image(systemName: "chevron.right").accessibilityHidden(true)
                             }.foregroundStyle(AppTheme.secondaryText)
                              .frame(minHeight: 44).padding(.horizontal, 20).padding(.vertical, 12).contentShape(Rectangle())
+                             .background(model.nearestStationID == stop.stationRef ? AppTheme.selection : Color.clear)
                         }.buttonStyle(.plain).disabled(!stop.selectable)
                          .accessibilityIdentifier("route-stop.\(stop.id)")
                          .id(stop.id)
@@ -223,8 +311,8 @@ private enum RoutePanelDetent: CaseIterable {
 
     func height(in available: CGFloat) -> CGFloat {
         switch self {
-        case .collapsed: min(148, available * 0.3)
-        case .medium: available * 0.58
+        case .collapsed: min(available * 0.45, max(160, available * 0.3))
+        case .medium: available * 0.5
         case .expanded: available
         }
     }
